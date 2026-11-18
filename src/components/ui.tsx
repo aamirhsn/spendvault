@@ -18,7 +18,7 @@ export function Sheet({ open, onClose, title, children, actions }: { open: boole
   return createPortal(
     <>
       <div className="sheet-backdrop" onClick={onClose} />
-      <div className="sheet glass" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
+      <div className="sheet liquid" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
         <div className="sheet-grab" />
         <div className="sheet-head">
           <button className="icon-btn sm" onClick={onClose} aria-label="Close">
@@ -48,9 +48,9 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boo
   return <button role="switch" aria-checked={on} aria-label={label} className={`toggle ${on ? 'on' : ''}`} onClick={() => onChange(!on)} />;
 }
 
-export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+export function Segmented<T extends string>({ value, options, onChange, full }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; full?: boolean }) {
   return (
-    <div className="seg" role="tablist">
+    <div className={`seg ${full ? 'full' : ''}`} role="tablist">
       {options.map((o) => (
         <button key={o.value} role="tab" aria-selected={value === o.value} className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
           {o.label}
@@ -88,7 +88,7 @@ export function ToastHost() {
     return () => clearTimeout(t);
   }, [msg]);
   return msg ? (
-    <div key={msg.key} className="toast glass" role="status">
+    <div key={msg.key} className="toast liquid" role="status">
       {msg.text}
     </div>
   ) : null;

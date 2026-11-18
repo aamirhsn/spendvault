@@ -28,33 +28,43 @@ export const categoryIcon = (name: string) => CATEGORIES.find((c) => c.name === 
 export const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 export const SERIES_OTHER = 'var(--s-other)';
 
-export const GIFT_BRANDS: { name: string; colors: [string, string] }[] = [
-  { name: 'Amazon', colors: ['#232f3e', '#ff9900'] },
-  { name: 'Flipkart', colors: ['#2874f0', '#ffe11b'] },
-  { name: 'Myntra', colors: ['#ff3f6c', '#f57b2c'] },
-  { name: 'Swiggy', colors: ['#fc8019', '#ff5a1f'] },
-  { name: 'Zomato', colors: ['#cb202d', '#e23744'] },
-  { name: 'Ajio', colors: ['#2c4152', '#b19975'] },
-  { name: 'Nykaa', colors: ['#fc2779', '#e80071'] },
-  { name: 'Tata CLiQ', colors: ['#2b2b2b', '#da1c5c'] },
-  { name: 'Croma', colors: ['#12daa8', '#0b8f6f'] },
-  { name: 'BigBasket', colors: ['#84c225', '#4c7a12'] },
-  { name: 'Blinkit', colors: ['#f8cb46', '#0c831f'] },
-  { name: 'Zepto', colors: ['#5e1a9a', '#ff3269'] },
-  { name: 'Uber', colors: ['#000000', '#3a3a3a'] },
-  { name: 'MakeMyTrip', colors: ['#e7262b', '#0a5ec4'] },
-  { name: 'BookMyShow', colors: ['#c4242b', '#f84464'] },
-  { name: 'Apple', colors: ['#1d1d1f', '#86868b'] },
-  { name: 'Google Play', colors: ['#01875f', '#4285f4'] },
-  { name: 'Starbucks', colors: ['#00704a', '#1e3932'] },
-  { name: 'Shoppers Stop', colors: ['#111111', '#c0a062'] },
-  { name: 'Lifestyle', colors: ['#e6007e', '#702283'] },
-  { name: 'Reliance Digital', colors: ['#0f3c91', '#e42529'] },
-  { name: 'Other', colors: ['#6a5cff', '#22c1c3'] },
+// Brand background (two shades of the brand's main colour) + accent used for badges.
+export const GIFT_BRANDS: { name: string; colors: [string, string]; accent: string }[] = [
+  { name: 'Amazon', colors: ['#37475a', '#131a22'], accent: '#ff9900' },
+  { name: 'Flipkart', colors: ['#2f80ff', '#1a56c9'], accent: '#ffe11b' },
+  { name: 'Myntra', colors: ['#ff4f79', '#e0275a'], accent: '#ffb199' },
+  { name: 'Swiggy', colors: ['#ff8a2a', '#f05a00'], accent: '#ffffff' },
+  { name: 'Zomato', colors: ['#ef4f5f', '#cb202d'], accent: '#ffffff' },
+  { name: 'Ajio', colors: ['#34495a', '#1b2a35'], accent: '#c9ab7f' },
+  { name: 'Nykaa', colors: ['#ff3d8b', '#e2006a'], accent: '#ffffff' },
+  { name: 'Tata CLiQ', colors: ['#2e2e33', '#121214'], accent: '#e6286a' },
+  { name: 'Croma', colors: ['#19c79a', '#0b8f6f'], accent: '#0b2b25' },
+  { name: 'BigBasket', colors: ['#8fcd2f', '#5a8f13'], accent: '#e3262b' },
+  { name: 'Blinkit', colors: ['#14953a', '#0a6b1f'], accent: '#f8cb46' },
+  { name: 'Zepto', colors: ['#6a22ad', '#3d0f68'], accent: '#ff3269' },
+  { name: 'Uber', colors: ['#2a2a2a', '#000000'], accent: '#ffffff' },
+  { name: 'MakeMyTrip', colors: ['#1470e0', '#08408a'], accent: '#ff4d4d' },
+  { name: 'BookMyShow', colors: ['#e3343c', '#b3191f'], accent: '#ffffff' },
+  { name: 'Apple', colors: ['#3a3a3c', '#111113'], accent: '#ffffff' },
+  { name: 'Google Play', colors: ['#14966b', '#0b6248'], accent: '#ffffff' },
+  { name: 'Starbucks', colors: ['#0a7d55', '#1e3932'], accent: '#ffffff' },
+  { name: 'Shoppers Stop', colors: ['#2b2b2b', '#0e0e0e'], accent: '#c9a45c' },
+  { name: 'Lifestyle', colors: ['#d4127f', '#702283'], accent: '#ffffff' },
+  { name: 'Reliance Digital', colors: ['#1450b8', '#0a2a66'], accent: '#ff3b3f' },
+  { name: 'Other', colors: ['#6a5cff', '#3b2fc9'], accent: '#ffffff' },
 ];
 
-export const giftBrandColors = (brand: string): [string, string] =>
-  GIFT_BRANDS.find((b) => b.name.toLowerCase() === brand.toLowerCase())?.colors ?? GIFT_BRANDS[GIFT_BRANDS.length - 1].colors;
+const giftBrand = (brand: string) =>
+  GIFT_BRANDS.find((b) => b.name.toLowerCase() === brand.toLowerCase()) ?? GIFT_BRANDS[GIFT_BRANDS.length - 1];
+export const giftBrandColors = (brand: string): [string, string] => giftBrand(brand).colors;
+export const giftBrandAccent = (brand: string) => giftBrand(brand).accent;
+
+/** Readable ink colour on top of a given background hex. */
+export function inkOn(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? '#111' : '#fff';
+}
 
 export const CARD_THEMES: Record<string, [string, string]> = {
   midnight: ['#1c1f2b', '#3a4160'],

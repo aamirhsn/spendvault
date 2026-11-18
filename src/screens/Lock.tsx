@@ -136,7 +136,7 @@ export function LockScreen() {
   if (isSetup && step === 'intro') {
     return (
       <div className="lock">
-        <div className="glass lock-card">
+        <div className="liquid lock-card">
           <img src="./icon.svg" alt="" className="lock-logo" />
           <h1>SpendVault</h1>
           <p className="muted small" style={{ margin: '0 0 22px', lineHeight: 1.5 }}>
@@ -158,7 +158,7 @@ export function LockScreen() {
             ))}
           </div>
           <div style={{ margin: '22px 0 10px' }}>
-            <Segmented<PasscodeKind> value={kind} onChange={setKind} options={[{ value: 'password', label: 'Password (stronger)' }, { value: 'pin', label: '6-digit PIN' }]} />
+            <Segmented<PasscodeKind> full value={kind} onChange={setKind} options={[{ value: 'password', label: 'Password (stronger)' }, { value: 'pin', label: '6-digit PIN' }]} />
           </div>
           {kind === 'pin' && <p className="tiny warn" style={{ margin: '0 0 8px' }}>A 6-digit PIN is convenient but much easier to brute-force if someone copies your browser data. A password is recommended.</p>}
           <button className="btn primary block" onClick={() => setStep('create')}>Create vault</button>
@@ -172,7 +172,7 @@ export function LockScreen() {
 
   return (
     <div className="lock">
-      <div className="glass lock-card">
+      <div className="liquid lock-card">
         <div className="icon-btn" style={{ margin: '0 auto 12px', width: 54, height: 54 }}><ILock /></div>
         <h1 style={{ fontSize: 24 }}>{title}</h1>
         <p className="muted small" style={{ margin: 0, minHeight: 20 }}>

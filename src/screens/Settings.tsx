@@ -205,7 +205,7 @@ function PasscodePanel({ onClose }: { onClose: () => void }) {
         }
       }}>
         <Field label="Current passcode"><input className="input" type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" /></Field>
-        <Segmented value={kind} onChange={setKind} options={[{ value: 'password', label: 'Password' }, { value: 'pin', label: '6-digit PIN' }]} />
+        <Segmented full value={kind} onChange={setKind} options={[{ value: 'password', label: 'Password' }, { value: 'pin', label: '6-digit PIN' }]} />
         <Field label={kind === 'pin' ? 'New PIN' : 'New password'}><input className="input" type="password" inputMode={kind === 'pin' ? 'numeric' : 'text'} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" /></Field>
         <Field label="Confirm"><input className="input" type="password" inputMode={kind === 'pin' ? 'numeric' : 'text'} value={conf} onChange={(e) => setConf(e.target.value)} autoComplete="new-password" /></Field>
         {err && <div className="err">{err}</div>}

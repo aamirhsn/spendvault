@@ -2,31 +2,42 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
 import type { GiftCard } from '../lib/types';
-import { GIFT_BRANDS, giftBrandColors } from '../lib/categories';
+import { GIFT_BRANDS, giftBrandAccent, giftBrandColors, inkOn } from '../lib/categories';
 import { daysUntil, money, parseISO, prettyDate, round2 } from '../lib/format';
 import { Empty, Field, Sheet, copyText, toast } from '../components/ui';
 import { useVerify } from '../components/Verify';
+import { LogoPicker } from '../components/LogoPicker';
+import { BrandLogo, hasBuiltInLogo, logoKey } from '../lib/logos';
 import { ICopy, IEdit, IEye, IPlus, ITrash } from '../components/Icons';
 
 type Filter = 'active' | 'used' | 'archived';
 
 function GiftVisual({ g, currency, hide }: { g: GiftCard; currency: string; hide: boolean }) {
   const [c1, c2] = giftBrandColors(g.brand);
+  const accent = giftBrandAccent(g.brand);
   const pct = g.value > 0 ? Math.min(100, (g.balance / g.value) * 100) : 0;
   const exp = g.expiry ? daysUntil(parseISO(g.expiry)) : null;
+  const { data } = useStore();
+  const logo = hasBuiltInLogo(g.brand) || !!data.logos?.[logoKey(g.brand)];
   return (
-    <div className={`gcard ${g.balance <= 0 || g.archived || (exp != null && exp < 0) ? 'dim' : ''}`} style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
-      <div className="row between">
-        <span className="brand ellipsis">{g.brand}</span>
-        <span className="tiny" style={{ opacity: 0.85 }}>•{g.code.slice(-4) || '····'}</span>
+    <div className={`gcard ${g.balance <= 0 || g.archived || (exp != null && exp < 0) ? 'dim' : ''}`} style={{ ['--c1' as string]: c1, ['--c2' as string]: c2 }}>
+      <div className="wm">{logo ? <BrandLogo name={g.brand} height={120} /> : <span className="wordmark wm-text">{g.brand}</span>}</div>
+      <div className="head">
+        <span className="logo-badge" style={logo ? undefined : { background: accent, borderColor: 'transparent', color: inkOn(accent) }}>
+          {logo ? <BrandLogo name={g.brand} height={20} /> : <b style={{ fontSize: 17, fontWeight: 850, letterSpacing: '-.03em' }}>{g.brand.slice(0, 1).toUpperCase()}</b>}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div className="brand">{g.brand}</div>
+          <div className="exp">
+            {exp == null ? 'No expiry' : exp < 0 ? 'Expired' : exp <= 30 ? `Expires in ${exp}d` : `Valid till ${parseISO(g.expiry).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`}
+          </div>
+        </div>
       </div>
       <div>
+        <div className="bal-l">Balance</div>
         <div className="bal num">{money(g.balance, currency, { hide })}</div>
-        <div className="tiny" style={{ opacity: 0.85 }}>
-          of {money(g.value, currency, { hide })}
-          {exp != null && <> · {exp < 0 ? 'Expired' : exp <= 30 ? `Expires in ${exp}d` : `Exp ${parseISO(g.expiry).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}`}</>}
-        </div>
-        <div className="pbar"><div style={{ width: `${pct}%` }} /></div>
+        <div className="of">of {money(g.value, currency, { hide })}</div>
+        <div className="pbar"><div style={{ width: `${pct}%`, background: accent }} /></div>
       </div>
     </div>
   );
@@ -48,11 +59,6 @@ export function GiftCards() {
   );
   const active = giftCards.filter((g) => !g.archived && g.balance > 0);
   const total = active.reduce((a, g) => a + g.balance, 0);
-  const byBrand = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const g of active) m.set(g.brand, (m.get(g.brand) ?? 0) + g.balance);
-    return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  }, [active]);
   const fmt = (n: number) => money(n, settings.currency, { hide: settings.hideAmounts });
   const current = detail ? giftCards.find((g) => g.id === detail) : undefined;
 
@@ -71,14 +77,6 @@ export function GiftCards() {
           <span className="label">Available balance</span>
           <div className="big num">{fmt(total)}</div>
           <div className="small muted">{active.length} active card{active.length === 1 ? '' : 's'}</div>
-          {byBrand.length > 0 && (
-            <div className="row wrap" style={{ gap: 6, marginTop: 12 }}>
-              {byBrand.slice(0, 6).map(([b, v]) => {
-                const [c1, c2] = giftBrandColors(b);
-                return <span key={b} className="chip"><span style={{ width: 8, height: 8, borderRadius: 4, background: `linear-gradient(135deg, ${c1}, ${c2})` }} />{b} {fmt(v)}</span>;
-              })}
-            </div>
-          )}
         </section>
 
         <div className="chips">
@@ -216,13 +214,16 @@ function GiftForm({ edit, onClose }: { edit?: GiftCard; onClose: () => void }) {
           <div className="pick-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}>
             {GIFT_BRANDS.map((b) => (
               <button key={b.name} type="button" className={`pick ${brand === b.name ? 'on' : ''}`} onClick={() => setBrand(b.name)}>
-                <span style={{ width: 26, height: 26, borderRadius: 8, background: `linear-gradient(135deg, ${b.colors[0]}, ${b.colors[1]})` }} />
+                <span style={{ width: 30, height: 30, borderRadius: 9, background: `linear-gradient(135deg, ${b.colors[0]}, ${b.colors[1]})`, display: 'grid', placeItems: 'center' }}>
+                  <BrandLogo name={b.name} height={16} fallback={false} />
+                </span>
                 {b.name}
               </button>
             ))}
           </div>
           {brand === 'Other' && <input className="input" placeholder="Brand name" value={custom} onChange={(e) => setCustom(e.target.value)} />}
         </div>
+        <LogoPicker name={brand === 'Other' ? custom : brand} label="Brand logo" />
         <Field label="Card number / voucher code"><input className="input mono" autoComplete="off" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
         <Field label="PIN"><input className="input mono" autoComplete="off" spellCheck={false} value={pin} onChange={(e) => setPin(e.target.value)} /></Field>
         <div className="grid2">

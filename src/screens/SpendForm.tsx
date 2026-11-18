@@ -8,6 +8,7 @@ import { categoryForMcc, lookupMcc } from '../lib/mcc';
 import { Field, Sheet, Toggle, toast } from '../components/ui';
 import { ITrash } from '../components/Icons';
 import { PAYMENT_LABELS } from '../components/TxnRow';
+import { BrandLogo, hasBuiltInLogo, logoKey } from '../lib/logos';
 
 const METHODS: PaymentType[] = ['card', 'upi', 'cash', 'netbanking', 'wallet', 'giftcard', 'other'];
 
@@ -165,7 +166,9 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
                   const [c1, c2] = giftBrandColors(g.brand);
                   return (
                     <div key={g.id} className="row">
-                      <span style={{ width: 36, height: 36, borderRadius: 11, background: `linear-gradient(135deg, ${c1}, ${c2})`, flex: 'none', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13 }}>{g.brand.slice(0, 2)}</span>
+                      <span style={{ width: 36, height: 36, borderRadius: 11, background: `linear-gradient(135deg, ${c1}, ${c2})`, flex: 'none', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13 }}>
+                        {hasBuiltInLogo(g.brand) || data.logos?.[logoKey(g.brand)] ? <BrandLogo name={g.brand} height={18} /> : g.brand.slice(0, 1).toUpperCase()}
+                      </span>
                       <div className="grow">
                         <div className="small" style={{ fontWeight: 620 }}>{g.brand} <span className="faint">•{g.code.slice(-4)}</span></div>
                         <div className="tiny muted">Available {money(available, settings.currency)}</div>

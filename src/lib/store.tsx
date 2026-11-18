@@ -26,6 +26,7 @@ interface Store {
   saveMerchant(m: Omit<Merchant, 'id' | 'updatedAt'> & { id?: string }): Promise<string>;
   deleteMerchant(id: string): Promise<void>;
   updateSettings(patch: Partial<Settings>): Promise<void>;
+  setLogo(key: string, dataUrl: string | null): Promise<void>;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -54,7 +55,7 @@ function adjustGiftBalances(giftCards: GiftCard[], uses: Transaction['giftCards'
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
-  const [data, setData] = useState<VaultData>(() => ({ transactions: [], cards: [], giftCards: [], merchants: [], settings: {} as Settings }));
+  const [data, setData] = useState<VaultData>(() => ({ transactions: [], cards: [], giftCards: [], merchants: [], settings: {} as Settings, logos: {} }));
   const [meta, setMeta] = useState<V.VaultMeta | null>(null);
   const dek = useRef<CryptoKey | null>(null);
   const dataRef = useRef(data);
@@ -78,7 +79,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const lock = useCallback(() => {
     dek.current = null;
-    const blank = { transactions: [], cards: [], giftCards: [], merchants: [], settings: dataRef.current.settings } as VaultData;
+    const blank = { transactions: [], cards: [], giftCards: [], merchants: [], settings: dataRef.current.settings, logos: {} } as VaultData;
     dataRef.current = blank;
     setData(blank);
     setStatus((s) => (s === 'unlocked' ? 'locked' : s));
@@ -172,6 +173,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       deleteMerchant: (id) => commit((d) => ({ ...d, merchants: d.merchants.filter((m) => m.id !== id) })),
       updateSettings: (patch) => commit((d) => ({ ...d, settings: { ...d.settings, ...patch } })),
+      setLogo: (key, url) =>
+        commit((d) => {
+          const logos = { ...d.logos };
+          if (url) logos[key] = url;
+          else delete logos[key];
+          return { ...d, logos };
+        }),
     }),
     [status, data, meta, opened, lock, commit],
   );

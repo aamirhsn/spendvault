@@ -87,6 +87,8 @@ export interface VaultData {
   giftCards: GiftCard[];
   merchants: Merchant[];
   settings: Settings;
+  /** User-uploaded brand/bank logos (PNG data URLs), keyed by logoKey(name). */
+  logos: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -104,4 +106,5 @@ export const emptyVault = (): VaultData => ({
   giftCards: [],
   merchants: [],
   settings: { ...DEFAULT_SETTINGS },
+  logos: {},
 });

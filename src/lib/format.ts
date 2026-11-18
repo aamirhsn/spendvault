@@ -81,16 +81,33 @@ export const daysUntil = (d: Date) => {
 export const digits = (s: string) => s.replace(/\D/g, '');
 export const last4 = (n: string) => digits(n).slice(-4);
 
+const isAmex = (d: string) => /^3[47]/.test(d);
+
+/** Expected length of a card number, used to keep layout stable while typing. */
+export const cardLength = (n: string) => {
+  const d = digits(n);
+  return isAmex(d) ? 15 : Math.max(16, d.length);
+};
+
+/** Group digits 4-4-4-4, or 4-6-5 for Amex (decided by prefix, never by length). */
 export function groupCardNumber(n: string) {
   const d = digits(n);
-  if (d.length === 15) return `${d.slice(0, 4)} ${d.slice(4, 10)} ${d.slice(10)}`; // Amex
+  if (isAmex(d)) return [d.slice(0, 4), d.slice(4, 10), d.slice(10, 15)].filter(Boolean).join(' ');
   return d.replace(/(.{4})/g, '$1 ').trim();
+}
+
+/** Typed digits padded with dots to the full card length, so a live preview never reflows. */
+export function previewCardNumber(n: string) {
+  const d = digits(n);
+  const full = (d + '•'.repeat(Math.max(0, cardLength(d) - d.length))).slice(0, cardLength(d));
+  if (isAmex(d)) return `${full.slice(0, 4)} ${full.slice(4, 10)} ${full.slice(10)}`;
+  return full.replace(/(.{4})/g, '$1 ').trim();
 }
 
 export function maskCardNumber(n: string) {
   const d = digits(n);
-  if (!d) return '•••• •••• •••• ••••';
-  return `•••• •••• •••• ${d.slice(-4)}`;
+  if (isAmex(d)) return `•••• •••••• •${d.slice(-4)}`;
+  return `•••• •••• •••• ${d.slice(-4).padStart(4, '•')}`;
 }
 
 export function luhnValid(n: string) {

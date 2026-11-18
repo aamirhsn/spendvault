@@ -2,30 +2,60 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import type { CardKind, CardNetwork, PaymentCard } from '../lib/types';
 import { CARD_THEMES } from '../lib/categories';
-import { daysUntil, detectNetwork, digits, groupCardNumber, last4, luhnValid, maskCardNumber, money, nextDayOfMonth, round2, todayISO } from '../lib/format';
+import { cardLength, daysUntil, detectNetwork, digits, groupCardNumber, last4, luhnValid, maskCardNumber, money, nextDayOfMonth, previewCardNumber, round2, todayISO } from '../lib/format';
+import { BrandLogo, NetworkLogo, hasBuiltInLogo } from '../lib/logos';
+import { LogoPicker } from '../components/LogoPicker';
 import { Empty, Field, Segmented, Sheet, copyText, toast } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { IAlert, ICheck, ICopy, IEdit, IEye, IPlus, ITrash } from '../components/Icons';
 
 const NETWORKS: CardNetwork[] = ['Visa', 'Mastercard', 'RuPay', 'Amex', 'Diners', 'Discover', 'Other'];
 
-function CardVisual({ c, reveal }: { c: PaymentCard; reveal?: boolean }) {
-  const [a, b] = CARD_THEMES[c.theme] ?? CARD_THEMES.midnight;
+function ChipSvg() {
   return (
-    <div className="pcard" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-      <div className="row between" style={{ alignItems: 'flex-start' }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="bank ellipsis">{c.bank || 'Bank'}</div>
-          <div className="pname ellipsis">{c.name} · {c.kind === 'credit' ? 'Credit' : 'Debit'}</div>
+    <svg className="chip-svg" viewBox="0 0 50 38" aria-hidden="true">
+      <defs>
+        <linearGradient id="chipg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f7e7a1" /><stop offset=".45" stopColor="#d4ae4f" /><stop offset="1" stopColor="#f1d68a" />
+        </linearGradient>
+      </defs>
+      <rect x=".5" y=".5" width="49" height="37" rx="7" fill="url(#chipg)" stroke="rgba(0,0,0,.25)" />
+      <path d="M17 .5v11M33 .5v11M17 26.5v11M33 26.5v11M.5 13h16M33 13h16.5M.5 25h16M33 25h16.5M17 11.5h16v15H17z" fill="none" stroke="rgba(90,60,10,.45)" strokeWidth="1.1" />
+    </svg>
+  );
+}
+
+function Contactless() {
+  return (
+    <svg className="nfc" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M8 8.5a5 5 0 0 1 0 7M11.5 6a9 9 0 0 1 0 12M15 3.5a13 13 0 0 1 0 17" />
+    </svg>
+  );
+}
+
+export function CardVisual({ c, reveal, preview }: { c: PaymentCard; reveal?: boolean; preview?: boolean }) {
+  const [a, b] = CARD_THEMES[c.theme] ?? CARD_THEMES.midnight;
+  const builtIn = hasBuiltInLogo(c.bank);
+  const num = preview ? previewCardNumber(c.number) : reveal ? groupCardNumber(c.number) : maskCardNumber(c.number);
+  return (
+    <div className="pcard" style={{ ['--c1' as string]: a, ['--c2' as string]: b }}>
+      <div className="pc-top">
+        <div className="pc-bank">
+          {(builtIn || c.bank) && <BrandLogo name={c.bank} height={26} fallback={false} />}
+          <div style={{ minWidth: 0 }}>
+            <div className="bn">{c.bank || 'Bank name'}</div>
+            {c.name && <div className="pn">{c.name}</div>}
+          </div>
         </div>
-        <span className="net">{c.network === 'Other' ? '' : c.network}</span>
+        <span className="pc-kind">{c.kind === 'credit' ? 'Credit' : 'Debit'}</span>
       </div>
-      <div className="chip-ic" />
-      <div className="pnum">{reveal ? groupCardNumber(c.number) : maskCardNumber(c.number)}</div>
-      <div className="meta">
-        <div style={{ minWidth: 0 }}><span style={{ opacity: 0.75 }}>Card holder</span><b className="ellipsis">{c.holder || '—'}</b></div>
-        <div style={{ textAlign: 'right' }}><span style={{ opacity: 0.75 }}>Expires</span><b>{c.expiry || '—'}</b></div>
-        {reveal && c.cvv && <div style={{ textAlign: 'right' }}><span style={{ opacity: 0.75 }}>CVV</span><b>{c.cvv}</b></div>}
+      <div className="pc-mid"><ChipSvg /><Contactless /></div>
+      <div className="pc-num">{num}</div>
+      <div className="pc-bottom">
+        <div className="f"><label>Card holder</label><b>{c.holder || '—'}</b></div>
+        <div className="f" style={{ flex: 'none' }}><label>Valid thru</label><b>{c.expiry || 'MM/YY'}</b></div>
+        {reveal && c.cvv && <div className="f" style={{ flex: 'none' }}><label>CVV</label><b>{c.cvv}</b></div>}
+        <div className="net"><NetworkLogo network={c.network} height={28} /></div>
       </div>
     </div>
   );
@@ -94,7 +124,7 @@ export function Cards() {
         )}
 
         {cards.length > 0 && (
-          <Segmented value={kind} onChange={setKind} options={[{ value: 'all', label: 'All' }, { value: 'credit', label: 'Credit' }, { value: 'debit', label: 'Debit' }]} />
+          <Segmented full value={kind} onChange={setKind} options={[{ value: 'all', label: 'All' }, { value: 'credit', label: 'Credit' }, { value: 'debit', label: 'Debit' }]} />
         )}
 
         {list.length === 0 ? (
@@ -225,7 +255,9 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
   const [err, setErr] = useState('');
 
   const d = digits(number);
-  const luhnWarn = d.length >= 13 && !luhnValid(d);
+  // Only judge the checksum once the number is complete, so the form doesn't jump while typing.
+  const complete = d.length >= cardLength(d);
+  const luhnWarn = complete && !luhnValid(d);
 
   const onNumber = (v: string) => {
     const dd = digits(v).slice(0, 19);
@@ -269,13 +301,14 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
   return (
     <Sheet open onClose={onClose} title={edit ? 'Edit card' : 'Add card'} actions={<button className="btn primary sm" onClick={save}>Save</button>}>
       <form className="stack-lg" autoComplete="off" onSubmit={(e) => { e.preventDefault(); save(); }}>
-        <CardVisual c={preview} reveal />
-        <Segmented value={kind} onChange={setKind} options={[{ value: 'credit', label: 'Credit card' }, { value: 'debit', label: 'Debit card' }]} />
+        <CardVisual c={preview} preview />
+        <Segmented full value={kind} onChange={setKind} options={[{ value: 'credit', label: 'Credit card' }, { value: 'debit', label: 'Debit card' }]} />
         <div className="grid2">
           <Field label="Bank / issuer"><input className="input" placeholder="HDFC Bank" value={bank} onChange={(e) => setBank(e.target.value)} /></Field>
           <Field label="Card name"><input className="input" placeholder="Regalia Gold" value={name} onChange={(e) => setName(e.target.value)} /></Field>
         </div>
-        <Field label="Card number" error={luhnWarn ? 'This number fails the checksum — double-check it.' : null} hint="Stored encrypted. Only the last 4 digits are shown by default.">
+        <LogoPicker name={bank} label="Bank logo" />
+        <Field label="Card number" error={luhnWarn ? 'Checksum failed — please double-check the number.' : null} hint="Encrypted. Only the last 4 digits are shown by default.">
           <input className="input mono" inputMode="numeric" autoComplete="off" placeholder="1234 5678 9012 3456" value={number} onChange={(e) => onNumber(e.target.value)} />
         </Field>
         <div className="grid2">
