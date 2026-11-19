@@ -184,6 +184,8 @@ function RuleEditor({ rule, onClose, onSave, onDelete }: { rule: SmsRule; onClos
 
 function AutomationGuide({ onClose }: { onClose: () => void }) {
   const url = `${location.origin}${location.pathname}#sms=`;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  const [mode, setMode] = useState<'app' | 'safari'>(standalone ? 'app' : 'safari');
   const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
     <div className="cell" style={{ alignItems: 'flex-start' }}>
       <span className="cbtn tinted" style={{ width: 28, height: 28, fontSize: 14, fontWeight: 700 }}>{n}</span>
@@ -194,23 +196,34 @@ function AutomationGuide({ onClose }: { onClose: () => void }) {
     <Sheet open onClose={onClose} title="Automate">
       <div className="stack-lg">
         <div className="group-f" style={{ margin: '0 4px', fontSize: 15, color: 'var(--label)' }}>
-          iPhones don’t let any app or website read your messages directly. The Shortcuts app can forward each bank SMS to SpendVault for you to confirm.
+          iPhone automations can’t be shared, so you set this up once in the <b>Shortcuts</b> app. It runs entirely on your phone.
         </div>
-        <Group header="Set up once in the Shortcuts app">
-          <Step n={1}>Open <b>Shortcuts</b> → <b>Automation</b> → <b>+</b> → <b>Message</b>.</Step>
-          <Step n={2}>Set <b>Message Contains</b> to <b>debited</b> (make a second one for <b>spent</b>). Choose <b>Run Immediately</b>.</Step>
-          <Step n={3}>Add the action <b>URL Encode</b> with <b>Shortcut Input → Content</b>.</Step>
-          <Step n={4}>Add <b>Open URLs</b> with the link below followed by the <b>URL Encoded Text</b>.</Step>
+        <div className="seg full" role="tablist">
+          <button className={mode === 'app' ? 'on' : ''} onClick={() => setMode('app')}>Home Screen app</button>
+          <button className={mode === 'safari' ? 'on' : ''} onClick={() => setMode('safari')}>Safari</button>
+        </div>
+        {mode === 'app' ? (
+          <Group header="1 · Make the shortcut" footer="The Home Screen app keeps its own data, so the shortcut hands over the SMS via the clipboard (cleared after 10 minutes).">
+            <Step n={1}>Shortcuts → <b>+</b> → name it <b>Copy SMS for SpendVault</b>.</Step>
+            <Step n={2}>Add <b>Copy to Clipboard</b> with <b>Shortcut Input</b>. Tap ▸ → <b>Local Only</b> on, <b>Expire</b> in 10 minutes.</Step>
+            <Step n={3}>Add <b>Show Notification</b>: “Bank SMS copied — open SpendVault and tap Paste”.</Step>
+          </Group>
+        ) : (
+          <Group header="1 · Make the shortcut" footer="The message goes after # in the link, which browsers never send to a server.">
+            <Step n={1}>Shortcuts → <b>+</b> → name it <b>Log to SpendVault</b>.</Step>
+            <Step n={2}>Add <b>URL Encode</b> with <b>Shortcut Input</b>.</Step>
+            <Step n={3}>Add <b>Open URLs</b>: paste the link below, then insert <b>URL Encoded Text</b> after it.</Step>
+            <div className="cell mono" style={{ fontSize: 13, wordBreak: 'break-all' }}>{url}</div>
+            <button className="cell tint" onClick={() => copyText(url, 'Link copied')}>Copy link</button>
+          </Group>
+        )}
+        <Group header="2 · Make the automation" footer="SpendVault always asks before saving. Your SMS Rules fill in names, categories and cards.">
+          <Step n={1}>Shortcuts → <b>Automation</b> → <b>+</b> → <b>Message</b>.</Step>
+          <Step n={2}><b>Message Contains</b>: <b>debited</b> → <b>Run Immediately</b>.</Step>
+          <Step n={3}>Add <b>Run Shortcut</b> → pick your shortcut → set its input to <b>Shortcut Input</b>.</Step>
+          <Step n={4}>Repeat for <b>spent</b> (and <b>sent Rs</b> if your bank uses it).</Step>
         </Group>
-        <Group footer="When a bank SMS arrives, SpendVault opens with the spend ready — tap Add.">
-          <div className="cell mono" style={{ fontSize: 13, wordBreak: 'break-all' }}>{url}</div>
-          <button className="cell tint" onClick={() => copyText(url, 'Link copied')}>Copy link</button>
-        </Group>
-        <Group header="Using the Home Screen app?">
-          <div className="cell small" style={{ lineHeight: 1.45 }}>
-            iOS keeps Home Screen web apps’ data separate from Safari, so links open a different copy. Instead, use the action <b>Copy to Clipboard</b> (Shortcut Input) in step 4. Then in SpendVault tap <b>Spends → Messages → Paste</b>.
-          </div>
-        </Group>
+        <div className="group-f center">Have a Mac? Ready-made shortcut files are in the project’s <b>docs/shortcuts</b> folder.</div>
       </div>
     </Sheet>
   );

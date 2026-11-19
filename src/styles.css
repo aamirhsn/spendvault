@@ -498,3 +498,19 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .todo-check.add { border-style: dashed; color: var(--tint); border-color: color-mix(in srgb, var(--tint) 60%, transparent); }
 .todo-check.add svg { width: 14px; height: 14px; }
 .todo-done { text-decoration: line-through; color: var(--label-2); }
+
+/* To-do: its own warm, Reminders-like card so it stands out from the other sections */
+.todo-card {
+  border-radius: var(--r-group); overflow: hidden; padding-bottom: 8px;
+  background: linear-gradient(180deg, #fff3d6 0%, #fff9ec 70px, var(--card) 140px);
+  box-shadow: inset 0 0 0 .5px rgba(255, 159, 10, .35);
+}
+:root[data-theme='dark'] .todo-card { background: linear-gradient(180deg, #3a2a08 0%, #241c0c 70px, var(--card) 140px); box-shadow: inset 0 0 0 .5px rgba(255, 159, 10, .35); }
+.todo-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px 6px; }
+.todo-badge { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #ffb340, #ff8a00); box-shadow: 0 4px 10px rgba(255, 138, 0, .35); flex: none; }
+.todo-badge svg { width: 21px; height: 21px; }
+.todo-title { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.todo-head .link { color: #c26a00; font-size: 15px; display: inline-flex; align-items: center; gap: 2px; }
+:root[data-theme='dark'] .todo-head .link { color: #ffb340; }
+.todo-card .todo-check.on { background: #ff9500; border-color: #ff9500; }
+.todo-card .todo-check.add { color: #ff8a00; border-color: rgba(255, 138, 0, .6); }

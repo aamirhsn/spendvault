@@ -87,12 +87,12 @@ export function TodoEditor({ todo, onClose }: { todo?: Todo; onClose: () => void
 /** Full list: open items, then completed with “Clear”. */
 export function TodoSheet({ onClose }: { onClose: () => void }) {
   const { data, clearDoneTodos } = useStore();
-  const [edit, setEdit] = useState<Todo | 'new' | null>(null);
+  const [edit, setEdit] = useState<Todo | null>(null);
   const todos = data.todos ?? [];
   const open = useMemo(() => sortTodos(todos.filter((t) => !t.done)), [todos]);
   const done = useMemo(() => todos.filter((t) => t.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0)), [todos]);
   return (
-    <Sheet open onClose={onClose} title="To-do" actions={<button className="cbtn tinted" aria-label="New to-do" onClick={() => setEdit('new')}><IPlus /></button>}>
+    <Sheet open onClose={onClose} title="To-do">
       <div className="stack-lg">
         <Group header={`${open.length} open`}>
           <QuickAdd />
@@ -105,7 +105,7 @@ export function TodoSheet({ onClose }: { onClose: () => void }) {
           </section>
         )}
       </div>
-      {edit && <TodoEditor todo={edit === 'new' ? undefined : edit} onClose={() => setEdit(null)} />}
+      {edit && <TodoEditor todo={edit} onClose={() => setEdit(null)} />}
     </Sheet>
   );
 }

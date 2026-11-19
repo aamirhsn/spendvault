@@ -8,7 +8,7 @@ import { TxnRow } from '../components/TxnRow';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
-import { ICalendar, IChevron, IFace, IPie, IPlus, ISettings } from '../components/Icons';
+import { ICalendar, IChecklist, IChevron, IFace, IPie, ISettings } from '../components/Icons';
 import { CBtn, NavRow } from '../components/ui';
 import { QuickAdd, TodoEditor, TodoRow, TodoSheet, sortTodos } from '../components/Todos';
 import type { Todo } from '../lib/types';
@@ -128,7 +128,6 @@ export function Home() {
       <header className="topbar" style={{ minHeight: 44, margin: '0 0 6px' }}>
         <span />
         <div className="actions">
-          <CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add spend" onClick={() => nav.newSpend()} />
           <CBtn variant="glass" size="lg" icon={<ISettings />} label="Settings" onClick={nav.openSettings} />
         </div>
       </header>
@@ -171,13 +170,20 @@ export function Home() {
           <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Use Face ID for your cards" subtitle="Faster than typing your PIN" onClick={nav.openSettings} /></div>
         )}
 
-        <section>
-          <div className="section-label">To-do{openTodos.length > 0 ? ` · ${openTodos.length}` : ''} <button className="link" onClick={() => setTodoSheet(true)}>{(data.todos ?? []).length ? 'See all' : 'Open'} <IChevron width={13} /></button></div>
-          <div className="group">
+        <section className="todo-card" aria-label="To-do list">
+          <div className="todo-head">
+            <span className="todo-badge"><IChecklist /></span>
+            <div className="grow">
+              <div className="todo-title">To-do</div>
+              <div className="foot muted">{openTodos.length ? `${openTodos.length} open${openTodos.some((t) => t.due && t.due <= today) ? ' · some due' : ''}` : 'Nothing pending'}</div>
+            </div>
+            {(data.todos ?? []).length > 0 && <button className="link" onClick={() => setTodoSheet(true)}>See all <IChevron width={13} /></button>}
+          </div>
+          <div className="todo-list">
             {openTodos.slice(0, 5).map((t) => <TodoRow key={t.id} t={t} onEdit={setTodoEdit} />)}
             <QuickAdd />
           </div>
-          {openTodos.length > 5 && <div className="group-f">+{openTodos.length - 5} more in the full list</div>}
+          {openTodos.length > 5 && <div className="foot muted" style={{ padding: '8px 16px 0' }}>+{openTodos.length - 5} more in the full list</div>}
         </section>
 
         <section>
