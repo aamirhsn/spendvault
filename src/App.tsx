@@ -102,7 +102,7 @@ export default function App() {
         {tab === 'gifts' && <GiftCards />}
         {tab === 'cards' && <Cards />}
       </div>
-      <TabBar tab={tab} onChange={go} onAdd={() => setForm({ open: true })} />
+      <TabBar tab={tab} onChange={go} />
       {form.open && <SpendForm draft={form.draft} edit={form.edit} onClose={() => setForm({ open: false })} />}
       <SettingsSheet open={settings} onClose={() => setSettings(false)} />
       {messages.open && <MessagesSheet initialText={messages.text} onClose={() => setMessages({ open: false })} />}

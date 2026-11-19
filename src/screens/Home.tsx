@@ -8,8 +8,10 @@ import { TxnRow } from '../components/TxnRow';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
-import { ICalendar, IChevron, IFace, IPie, ISettings } from '../components/Icons';
+import { ICalendar, IChevron, IFace, IPie, IPlus, ISettings } from '../components/Icons';
 import { CBtn, NavRow } from '../components/ui';
+import { QuickAdd, TodoEditor, TodoRow, TodoSheet, sortTodos } from '../components/Todos';
+import type { Todo } from '../lib/types';
 
 function greeting() {
   const h = new Date().getHours();
@@ -27,6 +29,9 @@ export function Home() {
   const fmt = (n: number) => money(n, cur, { hide, decimals: false });
   const fmtC = (n: number) => money(n, cur, { hide, compact: true });
   const [budgets, setBudgets] = useState(false);
+  const [todoSheet, setTodoSheet] = useState(false);
+  const [todoEdit, setTodoEdit] = useState<Todo | null>(null);
+  const openTodos = useMemo(() => sortTodos((data.todos ?? []).filter((t) => !t.done)), [data.todos]);
 
   const today = todayISO();
   const now = new Date();
@@ -122,7 +127,10 @@ export function Home() {
       <div className="wash" style={{ ['--wash' as string]: '#c9dcff' }} />
       <header className="topbar" style={{ minHeight: 44, margin: '0 0 6px' }}>
         <span />
-        <div className="actions"><CBtn variant="glass" size="lg" icon={<ISettings />} label="Settings" onClick={nav.openSettings} /></div>
+        <div className="actions">
+          <CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add spend" onClick={() => nav.newSpend()} />
+          <CBtn variant="glass" size="lg" icon={<ISettings />} label="Settings" onClick={nav.openSettings} />
+        </div>
       </header>
 
       <div className="greet" style={{ margin: '0 4px 20px' }}>
@@ -162,6 +170,15 @@ export function Home() {
         {vault !== 'none' && !biometricEnabled && (
           <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Use Face ID for your cards" subtitle="Faster than typing your PIN" onClick={nav.openSettings} /></div>
         )}
+
+        <section>
+          <div className="section-label">To-do{openTodos.length > 0 ? ` · ${openTodos.length}` : ''} <button className="link" onClick={() => setTodoSheet(true)}>{(data.todos ?? []).length ? 'See all' : 'Open'} <IChevron width={13} /></button></div>
+          <div className="group">
+            {openTodos.slice(0, 5).map((t) => <TodoRow key={t.id} t={t} onEdit={setTodoEdit} />)}
+            <QuickAdd />
+          </div>
+          {openTodos.length > 5 && <div className="group-f">+{openTodos.length - 5} more in the full list</div>}
+        </section>
 
         <section>
           <div className="section-label">Budgets <button className="link" onClick={() => setBudgets(true)}>{limitTotal ? 'Edit' : 'Set up'} <IChevron width={13} /></button></div>
@@ -265,6 +282,8 @@ export function Home() {
         </section>
       </div>
       <BudgetsSheet open={budgets} onClose={() => setBudgets(false)} />
+      {todoSheet && <TodoSheet onClose={() => setTodoSheet(false)} />}
+      {todoEdit && <TodoEditor todo={todoEdit} onClose={() => setTodoEdit(null)} />}
     </div>
   );
 }

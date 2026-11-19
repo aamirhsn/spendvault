@@ -97,6 +97,17 @@ export interface SmsRule {
   ignore?: boolean; // skip messages that match
 }
 
+export interface Todo {
+  id: ID;
+  title: string;
+  done: boolean;
+  due?: string; // YYYY-MM-DD
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+  doneAt?: number;
+}
+
 export interface VaultData {
   transactions: Transaction[];
   cards: PaymentCard[];
@@ -107,6 +118,7 @@ export interface VaultData {
   logos: Record<string, string>;
   rules: SmsRule[];
   smsSeen: string[]; // hashes of imported messages, to skip duplicates
+  todos: Todo[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -128,4 +140,5 @@ export const emptyVault = (): VaultData => ({
   logos: {},
   rules: [],
   smsSeen: [],
+  todos: [],
 });

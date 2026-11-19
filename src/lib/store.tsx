@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { GiftCard, Merchant, PaymentCard, Settings, SmsRule, Transaction, VaultData } from './types';
+import type { GiftCard, Merchant, PaymentCard, Settings, SmsRule, Todo, Transaction, VaultData } from './types';
 import { emptyVault } from './types';
 import * as V from './vault';
 import { last4, round2, uid } from './format';
@@ -46,6 +46,10 @@ interface Store {
   updateSettings(patch: Partial<Settings>): Promise<void>;
   setLogo(key: string, dataUrl: string | null): Promise<void>;
   saveRules(rules: SmsRule[]): Promise<void>;
+  saveTodo(t: Partial<Todo> & { title: string }): Promise<void>;
+  toggleTodo(id: string): Promise<void>;
+  deleteTodo(id: string): Promise<void>;
+  clearDoneTodos(): Promise<void>;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -281,6 +285,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return { ...d, logos };
         }),
       saveRules: (rules) => commit((d) => ({ ...d, rules })),
+      saveTodo: (t) => commit((d) => ({ ...d, todos: upsert(d.todos ?? [], { done: false, ...t } as Partial<Todo>) })),
+      toggleTodo: (id) =>
+        commit((d) => ({ ...d, todos: (d.todos ?? []).map((t) => (t.id === id ? { ...t, done: !t.done, doneAt: t.done ? undefined : Date.now(), updatedAt: Date.now() } : t)) })),
+      deleteTodo: (id) => commit((d) => ({ ...d, todos: (d.todos ?? []).filter((t) => t.id !== id) })),
+      clearDoneTodos: () => commit((d) => ({ ...d, todos: (d.todos ?? []).filter((t) => !t.done) })),
     }),
     [status, vault, data, meta, unlockRequest, requestUnlock, opened, lock, commit, flush],
   );
