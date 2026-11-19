@@ -19,7 +19,7 @@ export function BudgetsSheet({ open, onClose }: { open: boolean; onClose: () => 
     updateSettings({ categoryBudgets: next });
   };
   return (
-    <Sheet open={open} onClose={onClose} title="Budgets" cancelLabel="Done">
+    <Sheet open={open} onClose={onClose} title="Budgets">
       <div className="stack-lg">
         <Group footer="Your total spending limit for each month. Leave empty for no limit.">
           <FieldRow label="Monthly total"><input inputMode="numeric" placeholder="No limit" value={s.monthlyBudget || ''} onChange={(e) => updateSettings({ monthlyBudget: parse(e.target.value) })} /></FieldRow>

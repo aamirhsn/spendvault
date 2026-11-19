@@ -1,78 +1,82 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
-import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, todayISO } from '../lib/format';
-import { SERIES, SERIES_OTHER, categoryIcon } from '../lib/categories';
-import { AreaChart, Bars, Donut, ShareBars, type Point } from '../components/Charts';
-import { TxnRow, paymentLabel } from '../components/TxnRow';
+import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, prettyDate, todayISO } from '../lib/format';
+import { SERIES, SERIES_OTHER } from '../lib/categories';
+import { Bars, Donut, type Point } from '../components/Charts';
+import { TxnRow } from '../components/TxnRow';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
-import { IFace, ISettings } from '../components/Icons';
-import { Group, NavRow, Segmented } from '../components/ui';
+import { CatIcon } from '../components/CatIcon';
+import { Logo, hasLogo } from '../lib/logos';
+import { ICalendar, IChevron, IFace, IPie, ISettings } from '../components/Icons';
+import { CBtn, NavRow } from '../components/ui';
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return h < 5 ? 'Good Night' : h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
 }
+const ordinal = (n: number) => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
+const WEEKS = 16;
 
 export function Home() {
   const { data, biometricEnabled } = useStore();
   const nav = useNav();
-  const { transactions: txns, cards, giftCards, settings } = data;
+  const { transactions: txns, cards, giftCards, merchants, settings } = data;
   const cur = settings.currency;
   const hide = settings.hideAmounts;
   const fmt = (n: number) => money(n, cur, { hide, decimals: false });
   const fmtC = (n: number) => money(n, cur, { hide, compact: true });
-  const [range, setRange] = useState<'30' | '90'>('30');
   const [budgets, setBudgets] = useState(false);
 
   const today = todayISO();
+  const now = new Date();
   const thisMonth = monthKey(today);
   const lastMonth = addMonths(thisMonth, -1);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysLeft = daysInMonth - now.getDate() + 1;
 
   const stats = useMemo(() => {
     const dom = Number(today.slice(8, 10));
-    let month = 0, lastToDate = 0, lastFull = 0, count = 0, giftUsed = 0;
+    let month = 0, lastToDate = 0, count = 0;
     const byCat = new Map<string, number>();
-    const byPay = new Map<string, number>();
     for (const t of txns) {
       const mk = monthKey(t.date);
       if (mk === thisMonth) {
         month += t.amount;
         count++;
         byCat.set(t.category, (byCat.get(t.category) ?? 0) + t.amount);
-        const gift = t.giftCards.reduce((a, g) => a + g.amount, 0);
-        giftUsed += gift;
-        const lbl = paymentLabel(t, cards);
-        if (t.amount - gift > 0) byPay.set(lbl, (byPay.get(lbl) ?? 0) + t.amount - gift);
-        if (gift > 0) byPay.set('Gift cards', (byPay.get('Gift cards') ?? 0) + gift);
-      } else if (mk === lastMonth) {
-        lastFull += t.amount;
-        if (Number(t.date.slice(8, 10)) <= dom) lastToDate += t.amount;
-      }
+      } else if (mk === lastMonth && Number(t.date.slice(8, 10)) <= dom) lastToDate += t.amount;
     }
     const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1]);
-    const slices = cats.slice(0, 4).map(([label, value], i) => ({ label, value, color: SERIES[i], icon: categoryIcon(label) }));
+    const slices = cats.slice(0, 4).map(([label, value], i) => ({ label, value, color: SERIES[i] }));
     const rest = cats.slice(4).reduce((a, [, v]) => a + v, 0);
-    if (rest > 0) slices.push({ label: 'Other', value: rest, color: SERIES_OTHER, icon: '•' });
-    const pays = [...byPay.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([label, value]) => ({ label, value }));
-    return { month, lastToDate, lastFull, count, giftUsed, slices, pays, byCat, avg: month / dom };
-  }, [txns, cards, thisMonth, lastMonth, today]);
+    if (rest > 0) slices.push({ label: 'Other', value: rest, color: SERIES_OTHER });
+    return { month, lastToDate, count, byCat, top: cats[0], slices };
+  }, [txns, thisMonth, lastMonth, today]);
 
-  const daily = useMemo<Point[]>(() => {
-    const days = Number(range);
-    const map = new Map<string, number>();
-    for (const t of txns) map.set(t.date, (map.get(t.date) ?? 0) + t.amount);
-    const out: Point[] = [];
+  // Heatmap: last 16 weeks, Monday-first columns.
+  const heat = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const t of txns) totals.set(t.date, (totals.get(t.date) ?? 0) + t.amount);
     const end = parseISO(today);
-    const every = days === 30 ? 7 : 30;
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(end);
-      d.setDate(d.getDate() - i);
-      const lbl = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-      out.push({ label: lbl, tick: (days - 1 - i) % every === 0 ? lbl : undefined, value: map.get(todayISO(d)) ?? 0 });
+    const start = new Date(end);
+    start.setDate(start.getDate() - ((end.getDay() + 6) % 7) - (WEEKS - 1) * 7);
+    const cells: { iso: string; v: number; future: boolean }[] = [];
+    for (let i = 0; i < WEEKS * 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const iso = todayISO(d);
+      cells.push({ iso, v: totals.get(iso) ?? 0, future: d > end });
     }
-    return out;
-  }, [txns, today, range]);
+    const vals = cells.filter((c) => c.v > 0).map((c) => c.v).sort((a, b) => a - b);
+    const q = (p: number) => vals[Math.floor((vals.length - 1) * p)] ?? 0;
+    const [q1, q2, q3] = [q(0.25), q(0.5), q(0.75)];
+    const level = (v: number) => (v <= 0 ? 0 : v <= q1 ? 1 : v <= q2 ? 2 : v <= q3 ? 3 : 4);
+    const weekStart = new Date(end);
+    weekStart.setDate(end.getDate() - ((end.getDay() + 6) % 7));
+    const thisWeek = cells.filter((c) => !c.future && c.iso >= todayISO(weekStart)).reduce((a, c) => a + c.v, 0);
+    return { cells: cells.map((c) => ({ ...c, l: level(c.v) })), thisWeek };
+  }, [txns, today]);
 
   const monthly = useMemo<Point[]>(() => {
     const totals = new Map<string, number>();
@@ -87,143 +91,173 @@ export function Home() {
     () =>
       cards
         .filter((c) => c.kind === 'credit' && c.dueDay && ((c.totalDue ?? 0) > 0 || (c.overdue ?? 0) > 0))
-        .map((c) => {
-          const due = nextDayOfMonth(c.dueDay!);
-          return { c, due, days: daysUntil(due) };
-        })
+        .map((c) => ({ c, due: nextDayOfMonth(c.dueDay!), days: daysUntil(nextDayOfMonth(c.dueDay!)), owed: (c.totalDue ?? 0) + (c.overdue ?? 0) }))
         .sort((a, b) => (b.c.overdue ?? 0) - (a.c.overdue ?? 0) || a.days - b.days),
     [cards],
   );
-  const totalDue = cards.reduce((a, c) => a + (c.kind === 'credit' ? (c.totalDue ?? 0) + (c.overdue ?? 0) : 0), 0);
-  const activeGift = giftCards.filter((g) => !g.archived && g.balance > 0);
-  const giftBal = activeGift.reduce((a, g) => a + g.balance, 0);
-  const expiring = activeGift.filter((g) => g.expiry && daysUntil(parseISO(g.expiry)) <= 30 && daysUntil(parseISO(g.expiry)) >= 0);
+  const dueTotal = dues.reduce((a, d) => a + d.owed, 0);
+  const expiring = giftCards.filter((g) => !g.archived && g.balance > 0 && g.expiry && daysUntil(parseISO(g.expiry)) >= 0 && daysUntil(parseISO(g.expiry)) <= 30);
 
-  const delta = stats.lastToDate > 0 ? ((stats.month - stats.lastToDate) / stats.lastToDate) * 100 : null;
   const budget = settings.monthlyBudget;
-  const budgetPct = budget > 0 ? (stats.month / budget) * 100 : 0;
   const catBudgets = Object.entries(settings.categoryBudgets ?? {})
     .filter(([, v]) => v > 0)
     .map(([name, limit]) => ({ name, limit, spent: stats.byCat.get(name) ?? 0 }))
     .sort((a, b) => b.spent / b.limit - a.spent / a.limit);
+  const limitTotal = budget || catBudgets.reduce((a, b) => a + b.limit, 0);
+  const spentTotal = budget ? stats.month : catBudgets.reduce((a, b) => a + b.spent, 0);
+  const remaining = limitTotal - spentTotal;
+  const pct = limitTotal ? (spentTotal / limitTotal) * 100 : 0;
+  const delta = stats.lastToDate > 0 ? ((stats.month - stats.lastToDate) / stats.lastToDate) * 100 : null;
+
+  const recent = txns.slice(0, 8);
+  const recentGroups: [string, typeof recent][] = [];
+  for (const t of recent) {
+    const g = recentGroups.find(([d]) => d === t.date);
+    if (g) g[1].push(t);
+    else recentGroups.push([t.date, [t]]);
+  }
 
   return (
     <div className="screen">
-      <header className="topbar">
-        <div>
-          <div className="eyebrow">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-          <h1>{settings.displayName ? `Hi, ${settings.displayName}` : greeting()}</h1>
-        </div>
-        <div className="actions">
-          <button className="glass-btn liquid" onClick={nav.openSettings} aria-label="Settings"><ISettings /></button>
-        </div>
+      <div className="wash" style={{ ['--wash' as string]: '#c9dcff' }} />
+      <header className="topbar" style={{ minHeight: 44, margin: '0 0 6px' }}>
+        <span />
+        <div className="actions"><CBtn variant="glass" size="lg" icon={<ISettings />} label="Settings" onClick={nav.openSettings} /></div>
       </header>
 
+      <div className="greet" style={{ margin: '0 4px 20px' }}>
+        <h1>{greeting()}{settings.displayName ? `, ${settings.displayName}` : ''}</h1>
+        <p>Today is {ordinal(now.getDate())} {now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}. This is your spending for the last {WEEKS} weeks.</p>
+      </div>
+
       <div className="stack-lg">
-        {!biometricEnabled && (
-          <div className="group">
-            <NavRow icon={<IFace />} iconBg="var(--green)" title="Turn on Face ID / Touch ID" subtitle="Unlock faster and reveal cards securely" onClick={nav.openSettings} />
+        <div className="card">
+          <div className="split">
+            <div className="cellx">
+              <div className="k"><ICalendar /> This Month</div>
+              <div className="v num">{fmt(stats.month)}</div>
+              <div className="s">{delta == null ? `${stats.count} spends` : <span className={delta > 0 ? 'neg' : 'pos'}>{delta > 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(0)}% vs last month</span>}</div>
+            </div>
+            <div className="sep" />
+            <div className="cellx">
+              <div className="k"><IPie /> Top Category</div>
+              <div className="v" style={{ fontSize: 22, paddingTop: 3 }}>{stats.top ? stats.top[0] : '—'}</div>
+              <div className="s">{stats.top ? fmt(stats.top[1]) : 'No spends yet'}</div>
+            </div>
           </div>
+          <div style={{ padding: '0 16px 16px' }}>
+            <div className="heat" style={{ gridTemplateColumns: `repeat(${WEEKS}, 1fr)` }} role="img" aria-label={`Daily spending heatmap, ${fmt(heat.thisWeek)} this week`}>
+              {heat.cells.map((c) => <i key={c.iso} data-l={c.l} className={c.future ? 'future' : ''} title={`${prettyDate(c.iso)}: ${fmt(c.v)}`} />)}
+            </div>
+            <div className="row between foot muted" style={{ marginTop: 8 }}>
+              <span>{fmt(heat.thisWeek)} this week</span>
+              <span className="row" style={{ gap: 5 }}>Less <span className="heat-key">{[0, 1, 2, 3, 4].map((l) => <i key={l} data-l={l} />)}</span> More</span>
+            </div>
+          </div>
+        </div>
+
+        {!biometricEnabled && (
+          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Turn on Face ID / Touch ID" subtitle="Unlock faster and reveal cards securely" onClick={nav.openSettings} /></div>
         )}
 
-        <div className="card hero">
-          <div className="row between">
-            <span className="k">Spent in {monthLabel(thisMonth, true)}</span>
-            {delta != null && <span className={`pill ${delta > 0 ? 'up' : 'down'}`}>{delta > 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(0)}% vs last month</span>}
-          </div>
-          <div className="big num">{fmt(stats.month)}</div>
-          <div className="foot muted">{stats.count} transaction{stats.count === 1 ? '' : 's'} · {fmt(stats.avg)}/day</div>
-          {budget > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <div className="bar"><div style={{ width: `${Math.min(100, budgetPct)}%`, background: budgetColor(budgetPct) }} /></div>
-              <div className="row between foot muted" style={{ marginTop: 6 }}>
-                <span>{budgetPct.toFixed(0)}% of {fmt(budget)}</span>
-                <span>{budget >= stats.month ? `${fmt(budget - stats.month)} left` : <span className="bad">{fmt(stats.month - budget)} over</span>}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="grid2">
-          <button className="card stat" style={{ textAlign: 'left' }} onClick={() => nav.go('cards')}>
-            <div className="k">Card dues</div>
-            <div className={`v num ${totalDue > 0 ? 'warn' : ''}`}>{fmt(totalDue)}</div>
-            <div className="s">{dues.length ? `${dues.length} card${dues.length === 1 ? '' : 's'} to pay` : 'All clear'}</div>
-          </button>
-          <button className="card stat" style={{ textAlign: 'left' }} onClick={() => nav.go('gifts')}>
-            <div className="k">Gift cards</div>
-            <div className="v num">{fmt(giftBal)}</div>
-            <div className="s">{stats.giftUsed > 0 ? `${fmt(stats.giftUsed)} used this month` : `${activeGift.length} active`}</div>
-          </button>
-        </div>
-
         <section>
-          <div className="section-h"><h2>Budgets</h2><button className="link" onClick={() => setBudgets(true)}>{catBudgets.length ? 'Edit' : 'Set up'}</button></div>
-          {catBudgets.length ? (
-            <div className="card pad stack" style={{ gap: 14 }}>
+          <div className="section-label">Budgets <button className="link" onClick={() => setBudgets(true)}>{limitTotal ? 'Edit' : 'Set up'} <IChevron width={13} /></button></div>
+          {limitTotal ? (
+            <div className="card">
+              <div style={{ padding: '18px 16px 16px', background: 'linear-gradient(180deg, color-mix(in srgb, var(--tint) 10%, var(--card)), var(--card))', borderRadius: 'var(--r-group) var(--r-group) 0 0' }}>
+                <div className="row between"><span className="label-xs">{budget ? 'Monthly budget' : 'All budgets'} · {monthLabel(thisMonth, true)}</span><span className="foot muted">{pct.toFixed(0)}% spent</span></div>
+                <div className="giant num" style={{ marginTop: 10 }}>{fmt(Math.abs(remaining))}<small>{remaining >= 0 ? 'remaining' : 'over budget'}</small></div>
+                <div className="bar thick" style={{ marginTop: 14 }}><div style={{ width: `${Math.min(100, pct)}%`, background: budgetColor(pct) }} /></div>
+                <div className="row between" style={{ marginTop: 10 }}>
+                  <div><div className="foot muted">Spent</div><b className="num">{fmt(spentTotal)}</b></div>
+                  <div style={{ textAlign: 'right' }}><div className="foot muted">Limit</div><b className="num">{fmt(limitTotal)}</b></div>
+                </div>
+              </div>
               {catBudgets.map((b) => {
-                const pct = (b.spent / b.limit) * 100;
+                const p = (b.spent / b.limit) * 100;
                 return (
-                  <div key={b.name}>
-                    <div className="row between" style={{ marginBottom: 6, fontSize: 15 }}>
-                      <span className="ellipsis">{categoryIcon(b.name)} {b.name}</span>
-                      <span className="num" style={{ whiteSpace: 'nowrap' }}><b>{fmt(b.spent)}</b> <span className="muted">/ {fmt(b.limit)}</span></span>
-                    </div>
-                    <div className="bar"><div style={{ width: `${Math.min(100, pct)}%`, background: budgetColor(pct) }} /></div>
+                  <div key={b.name} className="cell" style={{ ['--inset' as string]: '68px' }}>
+                    <CatIcon name={b.name} size={40} />
+                    <span className="grow">
+                      <div className="t ellipsis" style={{ fontWeight: 500 }}>{b.name}</div>
+                      <div className="st">{daysLeft} days left · <span style={{ color: p > 100 ? 'var(--red)' : undefined }}>{p.toFixed(0)}% spent</span></div>
+                    </span>
+                    <span className="amt-col">
+                      <div className="a" style={{ color: b.limit - b.spent < 0 ? 'var(--red)' : undefined }}>{fmt(Math.abs(b.limit - b.spent))}</div>
+                      <div className="b">{b.limit - b.spent >= 0 ? 'left this month' : 'over'}</div>
+                    </span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="group"><NavRow title="Set monthly budgets per category" subtitle="Track Food, Shopping, Fuel and more against a limit" onClick={() => setBudgets(true)} /></div>
+            <div className="group"><NavRow icon={<IPie />} iconBg="var(--tint)" title="Set monthly budgets" subtitle="Overall and per category — Food, Fuel, Shopping…" onClick={() => setBudgets(true)} /></div>
           )}
         </section>
 
-        <section>
-          <div className="section-h"><h2>Spending</h2><Segmented value={range} onChange={setRange} options={[{ value: '30', label: '30D' }, { value: '90', label: '90D' }]} /></div>
-          <div className="card pad"><AreaChart data={daily} format={fmt} /></div>
-        </section>
+        {(dues.length > 0 || expiring.length > 0) && (
+          <section>
+            <div className="section-label">Coming up <button className="link" onClick={() => nav.go('cards')}>Cards <IChevron width={13} /></button></div>
+            <div className="card">
+              {dues.length > 0 && (
+                <div style={{ padding: '16px 16px 6px' }}>
+                  <div className="label-xs">Card bills due</div>
+                  <div className="giant num neg" style={{ fontSize: 34, marginTop: 6 }}>{fmt(dueTotal)}</div>
+                </div>
+              )}
+              {dues.map(({ c, due, days, owed }) => (
+                <button key={c.id} className="cell" style={{ ['--inset' as string]: '68px' }} onClick={() => nav.go('cards')}>
+                  <span className="logo-round">{hasLogo(c.bank, data.logos) ? <Logo name={c.bank} preferMark /> : <b>{c.bank.slice(0, 1)}</b>}</span>
+                  <span className="grow">
+                    <div className="t ellipsis" style={{ fontWeight: 500 }}>{c.name || c.bank}</div>
+                    <div className="st">Due {due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ••{c.number.slice(-4)}</div>
+                  </span>
+                  <span className="amt-col">
+                    <div className="a neg">{fmt(owed)}</div>
+                    <div style={{ marginTop: 3 }}>{(c.overdue ?? 0) > 0 ? <span className="tag bad">Overdue</span> : days <= 1 ? <span className="tag warn">{days === 0 ? 'Today' : 'Tomorrow'}</span> : days <= 7 ? <span className="tag warn">{days} days</span> : <span className="tag gray">{days} days</span>}</div>
+                  </span>
+                </button>
+              ))}
+              {expiring.map((g) => (
+                <button key={g.id} className="cell" style={{ ['--inset' as string]: '68px' }} onClick={() => nav.go('gifts')}>
+                  <span className="logo-round">{hasLogo(g.brand, data.logos) ? <Logo name={g.brand} /> : <b>{g.brand.slice(0, 1)}</b>}</span>
+                  <span className="grow"><div className="t ellipsis" style={{ fontWeight: 500 }}>{g.brand} gift card</div><div className="st">Use it before it expires</div></span>
+                  <span className="amt-col"><div className="a">{fmt(g.balance)}</div><div style={{ marginTop: 3 }}><span className="tag warn">{daysUntil(parseISO(g.expiry))} days left</span></div></span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="cols">
           <section>
-            <div className="section-h"><h2>Categories</h2></div>
+            <div className="section-label">Categories · {monthLabel(thisMonth, true)}</div>
             <div className="card pad">
-              {stats.slices.length ? <Donut slices={stats.slices} format={fmt} centerLabel={monthLabel(thisMonth, true)} size={132} /> : <p className="muted small" style={{ margin: 0 }}>No spends this month yet.</p>}
+              {stats.slices.length ? <Donut slices={stats.slices} format={fmt} centerLabel="Total" size={128} /> : <p className="muted small" style={{ margin: 0 }}>No spends this month yet.</p>}
             </div>
           </section>
           <section>
-            <div className="section-h"><h2>Monthly</h2></div>
-            <div className="card pad" style={{ paddingTop: 26 }}><Bars data={monthly} format={fmtC} highlight={monthly.length - 1} height={132} /></div>
+            <div className="section-label">Last 6 months</div>
+            <div className="card pad" style={{ paddingTop: 26 }}><Bars data={monthly} format={fmtC} highlight={monthly.length - 1} height={128} /></div>
           </section>
         </div>
 
-        {stats.pays.length > 0 && (
-          <section>
-            <div className="section-h"><h2>Paid with</h2></div>
-            <div className="card pad"><ShareBars rows={stats.pays} format={fmt} /></div>
-          </section>
-        )}
-
-        {(dues.length > 0 || expiring.length > 0) && (
-          <Group header="Upcoming">
-            {dues.map(({ c, due, days }) => (
-              <NavRow key={c.id} title={`${c.name || c.bank} bill`} subtitle={(c.overdue ?? 0) > 0 ? <span className="bad">{fmt(c.overdue!)} overdue</span> : `Due ${due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`}
-                value={<span><b style={{ color: 'var(--label)' }}>{fmt((c.totalDue ?? 0) + (c.overdue ?? 0))}</b><div className={`foot ${days <= 3 ? 'bad' : days <= 7 ? 'warn' : ''}`}>{days === 0 ? 'Today' : `in ${days}d`}</div></span>}
-                onClick={() => nav.go('cards')} />
-            ))}
-            {expiring.map((g) => {
-              const d = daysUntil(parseISO(g.expiry));
-              return <NavRow key={g.id} title={`${g.brand} gift card`} subtitle={<span className="warn">Expires {d === 0 ? 'today' : `in ${d} days`}</span>} value={fmt(g.balance)} onClick={() => nav.go('gifts')} />;
-            })}
-          </Group>
-        )}
-
         <section>
-          <div className="section-h"><h2>Recent</h2>{txns.length > 0 && <button className="link" onClick={() => nav.go('spends')}>See all</button>}</div>
-          {txns.length ? (
-            <div className="group">{txns.slice(0, 5).map((t) => <TxnRow key={t.id} t={t} cards={cards} settings={settings} onClick={() => nav.editSpend(t)} />)}</div>
+          <div className="section-label">Recent {txns.length > 0 && <button className="link" onClick={() => nav.go('spends')}>See all <IChevron width={13} /></button>}</div>
+          {recentGroups.length ? (
+            <div className="card" style={{ overflow: 'hidden' }}>
+              {recentGroups.map(([date, list]) => (
+                <div key={date}>
+                  <div className="row between" style={{ padding: '14px 16px 4px' }}>
+                    <b style={{ fontSize: 15 }}>{prettyDate(date)}</b>
+                    <span className="foot muted num">{fmt(list.reduce((a, t) => a + t.amount, 0))}</span>
+                  </div>
+                  {list.map((t) => <TxnRow key={t.id} t={t} cards={cards} merchants={merchants} settings={settings} onClick={() => nav.editSpend(t)} />)}
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="group"><NavRow title="Add your first spend" subtitle="Your insights will appear here" onClick={() => nav.newSpend()} /></div>
+            <div className="group"><NavRow title="Log your first spend" subtitle="Tap + to add one" onClick={() => nav.newSpend()} /></div>
           )}
         </section>
       </div>

@@ -5,7 +5,7 @@ import type { GiftCard } from '../lib/types';
 import { GIFT_BRANDS, giftBackground, giftBrand } from '../lib/categories';
 import { daysUntil, money, parseISO, prettyDate, round2 } from '../lib/format';
 import { Logo, hasLogo } from '../lib/logos';
-import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast } from '../components/ui';
+import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
 import { ICopy, IEye, IEyeOff, IPlus } from '../components/Icons';
@@ -15,7 +15,7 @@ type Filter = 'active' | 'used' | 'archived';
 export function LogoTile({ brand, size }: { brand: string; size?: number }) {
   const { data } = useStore();
   return (
-    <span className="logo-tile" style={size ? { minWidth: size, maxWidth: size * 2.4, height: size, borderRadius: size * 0.27, padding: `${size * 0.15}px ${size * 0.2}px` } : undefined}>
+    <span className="logo-tile" style={size ? { minWidth: size, maxWidth: size * 2, height: size, boxShadow: 'inset 0 0 0 .5px var(--sep)', borderRadius: size * 0.27, padding: `${size * 0.15}px ${size * 0.2}px` } : undefined}>
       {hasLogo(brand, data.logos) ? <Logo name={brand} /> : <span className="mono-l" style={{ color: giftBrand(brand).color }}>{brand.slice(0, 1).toUpperCase()}</span>}
     </span>
   );
@@ -71,10 +71,11 @@ export function GiftCards() {
 
   return (
     <div className="screen">
+      <div className="wash" style={{ ['--wash' as string]: '#ffd3e2' }} />
       <header className="topbar">
         <h1>Gift Cards</h1>
         <div className="actions">
-          <button className="glass-btn liquid tint" onClick={() => setForm({ open: true })} aria-label="Add gift card"><IPlus /></button>
+          <CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add gift card" onClick={() => setForm({ open: true })} />
         </div>
       </header>
 
@@ -131,7 +132,7 @@ function GiftDetail({ g, onClose, onEdit }: { g: GiftCard; onClose: () => void; 
   );
 
   return (
-    <Sheet open onClose={onClose} title={g.brand} cancelLabel="Done" actions={<button className="textbtn" onClick={onEdit}>Edit</button>}>
+    <Sheet open onClose={onClose} title={g.brand} actions={<EditBtn onClick={onEdit} />}>
       <div className="stack-lg">
         <GiftPass g={g} currency={cur} hide={false} big />
         <Group header="Redeem">
@@ -189,7 +190,7 @@ function GiftForm({ edit, onClose }: { edit?: GiftCard; onClose: () => void }) {
   };
 
   return (
-    <Sheet open onClose={onClose} title={edit ? 'Edit Gift Card' : 'New Gift Card'} actions={<button className="textbtn bold" onClick={save}>{edit ? 'Done' : 'Add'}</button>}>
+    <Sheet open onClose={onClose} title={edit ? 'Edit Gift Card' : 'New Gift Card'} actions={<SaveBtn onClick={save} />}>
       <div className="stack-lg">
         <Group>
           <FieldRow label="Brand">

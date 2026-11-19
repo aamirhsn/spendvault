@@ -49,7 +49,7 @@ const base = import.meta.env.BASE_URL;
  * Brand logo. `tone` = 'color' (original colours), 'white' or 'dark' (single-colour for card metal).
  * Returns null when no logo is known so the caller can render its own fallback.
  */
-export function Logo({ name, tone = 'color', className, style, alt }: { name: string; tone?: 'color' | 'white' | 'dark'; className?: string; style?: React.CSSProperties; alt?: string }) {
+export function Logo({ name, tone = 'color', className, style, alt, preferMark }: { name: string; tone?: 'color' | 'white' | 'dark'; className?: string; style?: React.CSSProperties; alt?: string; preferMark?: boolean }) {
   const { data } = useStore();
   const key = logoKey(name);
   const toneCls = tone === 'white' ? 'white-logo' : tone === 'dark' ? 'dark-logo' : '';
@@ -60,7 +60,7 @@ export function Logo({ name, tone = 'color', className, style, alt }: { name: st
   // Your own upload is always shown as-is.
   if (custom) return img(custom, '');
   // Official artwork: recoloured to a silhouette on card metal, unless it sits on its own background box.
-  if (file && (tone === 'color' || !BOXED.has(key))) return img(`${base}logos/${file}`, toneCls);
+  if (file && !(preferMark && icon) && (tone === 'color' || !BOXED.has(key))) return img(`${base}logos/${file}`, toneCls);
   if (icon) {
     const fill = tone === 'white' ? '#fff' : tone === 'dark' ? '#111' : `#${icon.hex}`;
     return (
@@ -82,4 +82,16 @@ export async function fileToDataUrl(file: File, max = 256, type: 'image/png' | '
   c.height = Math.round(bmp.height * s);
   c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
   return c.toDataURL(type, 0.85);
+}
+
+const KNOWN_KEYS = (): string[] => [...new Set([...Object.keys(LOGO_FILES), ...Object.keys(ICONS)])];
+/** Find a known brand mentioned in free text, e.g. "Swiggy order" → "swiggy". */
+export function findBrand(text: string | undefined): string | null {
+  if (!text) return null;
+  const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const cands = new Set<string>(words);
+  for (let i = 0; i < words.length - 1; i++) cands.add(words[i] + words[i + 1]);
+  for (const k of KNOWN_KEYS()) if (k.length >= 3 && cands.has(k)) return k;
+  for (const c of cands) if (ALIASES[c]) return ALIASES[c];
+  return null;
 }

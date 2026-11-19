@@ -5,7 +5,7 @@ import { CATEGORIES } from '../lib/categories';
 import { addMonths, money, monthKey, monthLabel, prettyDate, todayISO } from '../lib/format';
 import { TxnRow, paymentLabel } from '../components/TxnRow';
 import { IBack, IChevron, IPlus, ISearch } from '../components/Icons';
-import { Empty } from '../components/ui';
+import { Empty, CBtn } from '../components/ui';
 
 export function Spends() {
   const { data } = useStore();
@@ -37,9 +37,10 @@ export function Spends() {
 
   return (
     <div className="screen">
+      <div className="wash" style={{ ['--wash' as string]: '#ffdcc2' }} />
       <header className="topbar">
         <h1>Spends</h1>
-        <div className="actions"><button className="glass-btn liquid tint" onClick={() => nav.newSpend()} aria-label="Add spend"><IPlus /></button></div>
+        <div className="actions"><CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add spend" onClick={() => nav.newSpend()} /></div>
       </header>
 
       <div className="stack">
@@ -73,7 +74,7 @@ export function Spends() {
             {groups.map(([date, list]) => (
               <section key={date}>
                 <div className="date-h"><span>{prettyDate(date)}</span><span className="num">{fmt(list.reduce((a, t) => a + t.amount, 0))}</span></div>
-                <div className="group">{list.map((t) => <TxnRow key={t.id} t={t} cards={cards} settings={settings} onClick={() => nav.editSpend(t)} />)}</div>
+                <div className="group">{list.map((t) => <TxnRow key={t.id} t={t} cards={cards} merchants={data.merchants} settings={settings} onClick={() => nav.editSpend(t)} />)}</div>
               </section>
             ))}
           </div>

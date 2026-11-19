@@ -1,6 +1,7 @@
-import { categoryIcon } from '../lib/categories';
 import { last4, money } from '../lib/format';
-import type { PaymentCard, Settings, Transaction } from '../lib/types';
+import { Logo, findBrand } from '../lib/logos';
+import type { Merchant, PaymentCard, Settings, Transaction } from '../lib/types';
+import { CatIcon } from './CatIcon';
 
 export const PAYMENT_LABELS: Record<string, string> = {
   card: 'Card', upi: 'UPI', cash: 'Cash', netbanking: 'Net banking', wallet: 'Wallet', giftcard: 'Gift card only', other: 'Other',
@@ -14,16 +15,27 @@ export function paymentLabel(t: Transaction, cards: PaymentCard[]) {
   return PAYMENT_LABELS[t.payment.type] ?? 'Other';
 }
 
-export function TxnRow({ t, cards, settings, onClick }: { t: Transaction; cards: PaymentCard[]; settings: Settings; onClick?: () => void }) {
+/** Merchant logo when the spend mentions a known brand, otherwise the coloured category icon. */
+export function TxnIcon({ t, merchants, size = 40 }: { t: Transaction; merchants?: Merchant[]; size?: number }) {
+  const m = t.merchantId ? merchants?.find((x) => x.id === t.merchantId) : undefined;
+  const brand = findBrand(m?.name) ?? findBrand(t.description);
+  if (brand) return <span className="logo-round" style={{ width: size, height: size }}><Logo name={brand} preferMark /></span>;
+  return <CatIcon name={t.category} size={size} round />;
+}
+
+export function TxnRow({ t, cards, settings, merchants, onClick }: { t: Transaction; cards: PaymentCard[]; settings: Settings; merchants?: Merchant[]; onClick?: () => void }) {
   const gift = t.giftCards.reduce((a, g) => a + g.amount, 0);
   return (
     <button className="cell" style={{ ['--inset' as string]: '68px' }} onClick={onClick}>
-      <span className="tx-ic">{categoryIcon(t.category)}</span>
+      <TxnIcon t={t} merchants={merchants} />
       <span className="grow">
-        <div className="t ellipsis">{t.description || t.category}</div>
-        <div className="st ellipsis">{paymentLabel(t, cards)}{gift > 0 ? ' · 🎁 gift card' : ''}</div>
+        <div className="t ellipsis" style={{ fontWeight: 500 }}>{t.description || t.category}</div>
+        <div className="st ellipsis">{t.category}</div>
       </span>
-      <span className="amt num">{money(t.amount, settings.currency, { hide: settings.hideAmounts })}</span>
+      <span className="amt-col">
+        <div className="a neg">−{money(t.amount, settings.currency, { hide: settings.hideAmounts })}</div>
+        <div className="b ellipsis" style={{ maxWidth: 140 }}>{gift > 0 ? '🎁 ' : ''}{paymentLabel(t, cards)}</div>
+      </span>
     </button>
   );
 }

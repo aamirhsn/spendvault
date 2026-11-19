@@ -43,3 +43,15 @@ export const IBolt = base(<path d="M13 2 4 14h7l-1 8 9-12h-7z" />);
 export const IFlash = base(<><path d="M7 2h10l-2 7h4L9 22l2-9H7z" /></>);
 export const IUser = base(<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>);
 export const IBudget = base(<><circle cx="12" cy="12" r="9" /><path d="M12 3v9l6.4 6.4" /></>);
+
+export const IEllipsis = base(<><circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none" /></>);
+export const IPie = base(<><path d="M12 3a9 9 0 1 0 9 9h-9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></>);
+export const ITrend = base(<><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>);
+export const IFlame = base(<path d="M12 21c-3.9 0-7-2.7-7-6.5 0-3.8 3-5.7 4-9.5 1.5 1.6 2.3 3.2 2.5 4.8C13 8.5 14 7 14.3 5c2.6 2.2 4.7 5.6 4.7 9.5 0 3.8-3.1 6.5-7 6.5z" />);
+export const IBell = base(<><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>);
+export const IShield = base(<><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></>);
+export const IArrowDown = base(<><path d="M12 5v14M6 13l6 6 6-6" /></>);
+export const ITag = base(<><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z" /><circle cx="7.5" cy="7.5" r="1.5" /></>);
+export const INote = base(<><path d="M5 4h14v16H5z" /><path d="M9 9h6M9 13h6M9 17h3" /></>);
+export const IUsers = base(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6" /></>);
+export const IHash = base(<path d="M9 3 7 21M17 3l-2 18M4 8.5h16M3 15.5h16" />);

@@ -1,18 +1,40 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { IChevron } from './Icons';
+import { ICheck, IChevron, IClose, IEdit } from './Icons';
 
-/** iOS-style modal sheet: Cancel on the left, title centre, primary action on the right. */
-export function Sheet({ open, onClose, title, children, actions, cancelLabel = 'Cancel' }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; actions?: ReactNode; cancelLabel?: string }) {
+// Page scroll lock shared by all open sheets. A counter (not save/restore of the previous
+// value) so sheets closing in any order can never leave the page stuck unscrollable.
+let locks = 0;
+function lockScroll() {
+  locks += 1;
+  document.documentElement.style.overflow = 'hidden';
+}
+function unlockScroll() {
+  locks = Math.max(0, locks - 1);
+  if (locks === 0) document.documentElement.style.overflow = '';
+}
+
+/** Round toolbar button with a symbol (iOS 26 style). */
+export function CBtn({ icon, label, onClick, variant, size, type = 'button', disabled }: { icon: ReactNode; label: string; onClick?: () => void; variant?: 'primary' | 'tinted' | 'danger' | 'glass'; size?: 'lg'; type?: 'button' | 'submit'; disabled?: boolean }) {
+  return (
+    <button type={type} className={`cbtn ${variant ?? ''} ${size ?? ''}`} onClick={onClick} aria-label={label} title={label} disabled={disabled}>
+      {icon}
+    </button>
+  );
+}
+export const SaveBtn = ({ onClick, label = 'Save' }: { onClick: () => void; label?: string }) => <CBtn icon={<ICheck strokeWidth={2.6} />} label={label} variant="primary" onClick={onClick} />;
+export const EditBtn = ({ onClick }: { onClick: () => void }) => <CBtn icon={<IEdit />} label="Edit" variant="tinted" onClick={onClick} />;
+
+/** Modal sheet: ✕ on the left, title centre, actions (✓ / ✎) on the right. */
+export function Sheet({ open, onClose, title, children, actions }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; actions?: ReactNode; cancelLabel?: string }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    lockScroll();
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
+      unlockScroll();
     };
   }, [open, onClose]);
   if (!open) return null;
@@ -21,9 +43,9 @@ export function Sheet({ open, onClose, title, children, actions, cancelLabel = '
       <div className="sheet-backdrop" onClick={onClose} />
       <div className="sheet" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
         <div className="sheet-head">
-          <button className="textbtn l" onClick={onClose}>{cancelLabel}</button>
+          <span className="l"><CBtn icon={<IClose />} label="Close" onClick={onClose} /></span>
           <h3 className="ellipsis">{title}</h3>
-          <div className="r">{actions}</div>
+          <div className="r row" style={{ gap: 8 }}>{actions}</div>
         </div>
         <div className="sheet-body">{children}</div>
       </div>
@@ -44,9 +66,10 @@ export function Group({ header, footer, children, style }: { header?: ReactNode;
 }
 
 /** Label-left / control-right form row. */
-export function FieldRow({ label, children }: { label: string; children: ReactNode }) {
+export function FieldRow({ label, children, icon }: { label: string; children: ReactNode; icon?: ReactNode }) {
   return (
-    <label className="cell">
+    <label className={`cell ${icon ? 'with-lead' : ''}`} style={icon ? { ['--inset' as string]: '50px' } : undefined}>
+      {icon && <span className="lead">{icon}</span>}
       <span className="lbl">{label}</span>
       {children}
     </label>

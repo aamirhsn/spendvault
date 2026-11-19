@@ -4,7 +4,7 @@ import { useNav } from '../lib/nav';
 import { parseUpi, type UpiPayload } from '../lib/upi';
 import { categoryForMcc, isOftenExcluded, lookupMcc } from '../lib/mcc';
 import type { Merchant } from '../lib/types';
-import { DeleteRow, Empty, FieldRow, Group, NavRow, Sheet, copyText, toast } from '../components/ui';
+import { DeleteRow, Empty, FieldRow, Group, NavRow, Sheet, copyText, toast, SaveBtn } from '../components/ui';
 import { IAlert, IFlash, IImage, IScan, ISearch } from '../components/Icons';
 
 type Detector = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
@@ -210,6 +210,7 @@ export function Scanner() {
 
   return (
     <div className="screen">
+      <div className="wash" style={{ ['--wash' as string]: '#e1d8ff' }} />
       <header className="topbar"><h1>Scan</h1></header>
 
       <div className="stack-lg">
@@ -307,7 +308,7 @@ function MerchantSheet({ m, onClose, onSave, onDelete, onSpend }: { m: Merchant;
   const [mcc, setMcc] = useState(m.mcc);
   const [notes, setNotes] = useState(m.notes);
   return (
-    <Sheet open onClose={onClose} title="Merchant" actions={<button className="textbtn bold" onClick={() => onSave({ name: name.trim(), mcc: mcc.trim(), notes })}>Save</button>}>
+    <Sheet open onClose={onClose} title="Merchant" actions={<SaveBtn onClick={() => onSave({ name: name.trim(), mcc: mcc.trim(), notes })} />}>
       <div className="stack-lg">
         <Group><MccBlock mcc={mcc} /></Group>
         <Group footer={`Saved ${new Date(m.scannedAt).toLocaleDateString()}. Correct the MCC if your card statement shows a different one.`}>

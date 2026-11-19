@@ -90,7 +90,7 @@ export default function App() {
         {tab === 'gifts' && <GiftCards />}
         {tab === 'cards' && <Cards />}
       </div>
-      <TabBar tab={tab} onChange={go} />
+      <TabBar tab={tab} onChange={go} onAdd={() => setForm({ open: true })} />
       {form.open && <SpendForm draft={form.draft} edit={form.edit} onClose={() => setForm({ open: false })} />}
       <SettingsSheet open={settings} onClose={() => setSettings(false)} />
       <ToastHost />

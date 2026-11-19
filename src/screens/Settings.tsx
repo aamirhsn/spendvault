@@ -39,7 +39,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
   const set = (patch: Partial<Settings>) => updateSettings(patch);
 
   return (
-    <Sheet open={open} onClose={onClose} title="Settings" cancelLabel="Done">
+    <Sheet open={open} onClose={onClose} title="Settings">
       <div className="stack-lg">
         <Group>
           <FieldRow label="Your name"><input placeholder="For the greeting" value={s.displayName} onChange={(e) => set({ displayName: e.target.value.slice(0, 30) })} /></FieldRow>

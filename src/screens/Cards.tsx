@@ -4,7 +4,7 @@ import type { CardKind, CardNetwork, PaymentCard, Transaction } from '../lib/typ
 import { FINISHES, cardFinishKey, finishFor, suggestFinish } from '../lib/finishes';
 import { cardLength, daysUntil, detectNetwork, digits, groupCardNumber, last4, luhnValid, maskCardNumber, money, nextDayOfMonth, round2, todayISO } from '../lib/format';
 import { Logo, fileToDataUrl, hasLogo } from '../lib/logos';
-import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast } from '../components/ui';
+import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
 import { ICopy, IEye, IEyeOff, IPlus } from '../components/Icons';
@@ -133,10 +133,11 @@ export function Cards() {
 
   return (
     <div className="screen">
+      <div className="wash" style={{ ['--wash' as string]: '#c4eedb' }} />
       <header className="topbar">
         <h1>Cards</h1>
         <div className="actions">
-          <button className="glass-btn liquid tint" onClick={() => setForm({ open: true })} aria-label="Add card"><IPlus /></button>
+          <CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add card" onClick={() => setForm({ open: true })} />
         </div>
       </header>
 
@@ -228,7 +229,7 @@ function CardDetail({ c, cycle, onClose, onEdit }: { c: PaymentCard; cycle: numb
   );
 
   return (
-    <Sheet open onClose={onClose} title={c.name || c.bank} cancelLabel="Done" actions={<button className="textbtn" onClick={onEdit}>Edit</button>}>
+    <Sheet open onClose={onClose} title={c.name || c.bank} actions={<EditBtn onClick={onEdit} />}>
       <div className="stack-lg">
         <CardVisual c={c} reveal={!!show.number} />
 
@@ -279,7 +280,7 @@ function DuesSheet({ c, onClose }: { c: PaymentCard; onClose: () => void }) {
   const clean = (s: string) => s.replace(/[^\d.]/g, '');
   const save = async () => { await saveCard({ ...c, totalDue: n(total), minDue: n(min), overdue: n(over) }); toast('Dues updated'); onClose(); };
   return (
-    <Sheet open onClose={onClose} title="Update dues" actions={<button className="textbtn bold" onClick={save}>Save</button>}>
+    <Sheet open onClose={onClose} title="Update dues" actions={<SaveBtn onClick={save} />}>
       <Group footer="Overdue is anything unpaid from previous statements.">
         <FieldRow label="Total due"><input inputMode="decimal" placeholder="0" value={total} onChange={(e) => setTotal(clean(e.target.value))} /></FieldRow>
         <FieldRow label="Minimum due"><input inputMode="decimal" placeholder="0" value={min} onChange={(e) => setMin(clean(e.target.value))} /></FieldRow>
@@ -359,7 +360,7 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
   };
 
   return (
-    <Sheet open onClose={onClose} title={edit ? 'Edit Card' : 'New Card'} actions={<button className="textbtn bold" onClick={save}>{edit ? 'Done' : 'Add'}</button>}>
+    <Sheet open onClose={onClose} title={edit ? 'Edit Card' : 'New Card'} actions={<SaveBtn onClick={save} />}>
       <form className="stack-lg" autoComplete="off" onSubmit={(e) => { e.preventDefault(); save(); }}>
         <Segmented full value={kind} onChange={setKind} options={[{ value: 'credit', label: 'Credit' }, { value: 'debit', label: 'Debit' }]} />
 

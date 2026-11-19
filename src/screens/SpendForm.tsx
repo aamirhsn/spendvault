@@ -5,9 +5,11 @@ import type { GiftCardUse, PaymentType, Transaction } from '../lib/types';
 import { CATEGORIES } from '../lib/categories';
 import { last4, money, round2, todayISO } from '../lib/format';
 import { categoryForMcc, lookupMcc } from '../lib/mcc';
-import { DeleteRow, FieldRow, Group, Sheet, Toggle, toast } from '../components/ui';
+import { DeleteRow, FieldRow, Group, Sheet, Toggle, toast, SaveBtn } from '../components/ui';
 import { PAYMENT_LABELS } from '../components/TxnRow';
 import { LogoTile } from './GiftCards';
+import { CatIcon } from '../components/CatIcon';
+import { ICalendar, ICard, IGift, INote, IStore, ITag, IWallet } from '../components/Icons';
 
 const METHODS: PaymentType[] = ['card', 'upi', 'cash', 'netbanking', 'wallet', 'giftcard', 'other'];
 
@@ -99,23 +101,24 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
   const fmt = (n: number) => money(n, settings.currency);
 
   return (
-    <Sheet open onClose={onClose} title={edit ? 'Edit Spend' : 'New Spend'} actions={<button className="textbtn bold" onClick={save}>{edit ? 'Done' : 'Add'}</button>}>
+    <Sheet open onClose={onClose} title={edit ? 'Edit Spend' : 'New Spend'} actions={<SaveBtn onClick={save} />}>
       <div className="stack-lg">
-        <div className="amount-entry">
+        <div className="center" style={{ marginTop: 4 }}><CatIcon name={category} size={52} round /></div>
+        <div className="amount-entry" style={{ paddingTop: 0 }}>
           <span>{currencySymbol(settings.currency)}</span>
           <input inputMode="decimal" placeholder="0" style={{ width: `${Math.max(1, amount.length) * 0.62 + 0.3}em` }} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} aria-label="Amount" autoFocus={!edit} />
         </div>
 
         <Group>
-          <FieldRow label="Description"><input placeholder="What was it?" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={120} /></FieldRow>
-          <FieldRow label="Category">
+          <FieldRow icon={<INote />} label="Description"><input placeholder="What was it?" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={120} /></FieldRow>
+          <FieldRow icon={<ITag />} label="Category">
             <select value={category} onChange={(e) => setCategory(e.target.value)}>
               {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.icon}  {c.name}</option>)}
             </select>
           </FieldRow>
-          <FieldRow label="Date"><input type="date" value={date} max="2100-12-31" onChange={(e) => setDate(e.target.value)} /></FieldRow>
+          <FieldRow icon={<ICalendar />} label="Date"><input type="date" value={date} max="2100-12-31" onChange={(e) => setDate(e.target.value)} /></FieldRow>
           {merchants.length > 0 && (
-            <FieldRow label="Merchant">
+            <FieldRow icon={<IStore />} label="Merchant">
               <select value={merchantId} onChange={(e) => pickMerchant(e.target.value)}>
                 <option value="">None</option>
                 {merchants.map((m) => <option key={m.id} value={m.id}>{m.name || m.vpa}</option>)}
@@ -126,13 +129,13 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
         {merchant && <div className="group-f" style={{ marginTop: -16 }}>MCC {merchant.mcc || '—'}{mccInfo ? ` · ${mccInfo.desc}` : ''}</div>}
 
         <Group>
-          <FieldRow label="Paid with">
+          <FieldRow icon={<IWallet />} label="Paid with">
             <select value={ptype} onChange={(e) => { const v = e.target.value as PaymentType; setPtype(v); if (v === 'giftcard') setUseGift(true); }}>
               {METHODS.map((m) => <option key={m} value={m}>{PAYMENT_LABELS[m]}</option>)}
             </select>
           </FieldRow>
           {ptype === 'card' && (
-            <FieldRow label="Card">
+            <FieldRow icon={<ICard />} label="Card">
               {cards.length ? (
                 <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
                   {cards.map((c) => <option key={c.id} value={c.id}>{c.name || c.bank} ••{last4(c.number)}</option>)}
@@ -140,14 +143,15 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
               ) : <span className="v grow">Add one in Cards</span>}
             </FieldRow>
           )}
-          <div className="cell">
+          <div className="cell with-lead" style={{ ['--inset' as string]: '50px' }}>
+            <span className="lead"><IGift /></span>
             <span className="grow">Use gift cards</span>
             <Toggle on={useGift} onChange={setUseGift} label="Use gift cards" />
           </div>
           {useGift && giftOptions.length === 0 && <div className="cell st">No gift cards with balance.</div>}
           {useGift && giftOptions.map(({ g, available }) => (
             <div className="cell" key={g.id} style={{ ['--inset' as string]: '16px' }}>
-              <LogoTile brand={g.brand} size={34} />
+              <LogoTile brand={g.brand} size={30} />
               <span className="grow">
                 <div className="t ellipsis" style={{ fontSize: 15 }}>{g.brand}</div>
                 <div className="st" style={{ fontSize: 13 }}>{fmt(available)} available</div>
