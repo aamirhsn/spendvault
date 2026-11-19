@@ -3,13 +3,13 @@ import { useStore } from '../lib/store';
 import type { SpendDraft } from '../lib/nav';
 import type { GiftCardUse, PaymentType, Transaction } from '../lib/types';
 import { CATEGORIES } from '../lib/categories';
-import { last4, money, round2, todayISO } from '../lib/format';
+import { money, round2, todayISO } from '../lib/format';
 import { categoryForMcc, lookupMcc } from '../lib/mcc';
 import { DeleteRow, FieldRow, Group, Sheet, Toggle, toast, SaveBtn } from '../components/ui';
 import { PAYMENT_LABELS } from '../components/TxnRow';
 import { LogoTile } from './GiftCards';
 import { CatIcon } from '../components/CatIcon';
-import { ICalendar, ICard, IGift, INote, IStore, ITag, IWallet } from '../components/Icons';
+import { ICalendar, ICard, IEdit, IGift, INote, IStore, ITag, IWallet } from '../components/Icons';
 
 const METHODS: PaymentType[] = ['card', 'upi', 'cash', 'netbanking', 'wallet', 'giftcard', 'other'];
 
@@ -103,7 +103,7 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
   return (
     <Sheet open onClose={onClose} title={edit ? 'Edit Spend' : 'New Spend'} actions={<SaveBtn onClick={save} />}>
       <div className="stack-lg">
-        <div className="center" style={{ marginTop: 4 }}><CatIcon name={category} size={52} round /></div>
+        <div className="center" style={{ marginTop: 0 }}><CatIcon name={category} size={44} round /></div>
         <div className="amount-entry" style={{ paddingTop: 0 }}>
           <span>{currencySymbol(settings.currency)}</span>
           <input inputMode="decimal" placeholder="0" style={{ width: `${Math.max(1, amount.length) * 0.62 + 0.3}em` }} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} aria-label="Amount" autoFocus={!edit} />
@@ -138,7 +138,7 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
             <FieldRow icon={<ICard />} label="Card">
               {cards.length ? (
                 <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
-                  {cards.map((c) => <option key={c.id} value={c.id}>{c.name || c.bank} ••{last4(c.number)}</option>)}
+                  {cards.map((c) => <option key={c.id} value={c.id}>{c.name || c.bank} ••{c.last4}</option>)}
                 </select>
               ) : <span className="v grow">Add one in Cards</span>}
             </FieldRow>
@@ -167,8 +167,8 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
           </div>
         )}
 
-        <Group header="Notes">
-          <div className="cell"><textarea placeholder="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></div>
+        <Group>
+          <FieldRow icon={<IEdit />} label="Notes"><input placeholder="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} /></FieldRow>
         </Group>
 
         {error && <div className="group-f bad" style={{ marginTop: -10 }}>{error}</div>}

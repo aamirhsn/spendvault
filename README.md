@@ -17,18 +17,26 @@ Everything you enter stays on your device, encrypted. There is no backend, no ac
 
 ## Security model
 
-- **Encryption at rest:** all data is stored in IndexedDB as a single AES-256-GCM ciphertext (random 96-bit IV per save, purpose-bound additional data).
-- **Key hierarchy:** a random 256-bit data key encrypts the data. That key is *wrapped* by:
-  - your passcode → PBKDF2-SHA256, 600,000 iterations, random salt;
-  - optionally your biometrics → WebAuthn **PRF extension** secret from the platform authenticator (Face ID, Touch ID, Windows Hello, Android fingerprint) → HKDF-SHA256.
-  
-  While unlocked, the data key lives in memory only as a non-extractable `CryptoKey`; locking drops it.
-- **Brute-force friction:** escalating lockout after 5 wrong passcodes. A password is recommended over the 6-digit PIN option.
-- **Auto-lock** after inactivity or when the app is in the background longer than the timeout.
-- **Backups** are encrypted with a separate backup password, so they can be restored on another device.
-- **No recovery:** if you forget the passcode the data cannot be decrypted. Keep an encrypted backup.
+SpendVault keeps two encrypted tiers in this browser's IndexedDB, both using AES-256-GCM:
 
-Biometric unlock needs a browser with WebAuthn PRF support (Safari 18+ on iOS/macOS, recent Chrome/Edge). Elsewhere the app still works with the passcode. Camera and WebAuthn require HTTPS (or `localhost`).
+| Tier | What's in it | Protected by |
+|---|---|---|
+| **Everyday data** | spends, budgets, merchants, SMS rules, gift card balances, card names / last 4 / dues | a random device key generated on first launch and stored as a *non-extractable* WebCrypto key. The app opens straight to Home. |
+| **Card vault** | full card numbers, CVV, expiry, name on card, card photos, gift card codes and PINs | a random data key wrapped by your **6-digit PIN** (PBKDF2-SHA256, 600k iterations) and, if enabled, by **Face ID / Touch ID** (WebAuthn PRF → HKDF). Opening the Cards tab or revealing a gift card code asks for it. |
+
+- The card vault re-locks after the timeout you choose in Settings and when the app has been in the background that long.
+- Escalating lockout after 5 wrong PINs.
+- The device key protects everyday data from casual copying of storage files, but anyone who can use this browser profile can open the app — that's the trade-off for not locking the whole app. Card numbers and codes are never readable without your PIN or biometrics.
+- Backups are encrypted with a separate backup password and include the card vault.
+- **No recovery:** forget the PIN and card details can't be decrypted. Keep an encrypted backup.
+
+## Spends from bank SMS
+
+iOS doesn't allow any app or website to read your messages, so SpendVault offers the next best things:
+
+- **Spends → Messages** (💬): paste one or many bank / UPI / card alerts. Amount, date, merchant / UPI ID and card (matched by last 4 digits) are detected; credits, OTPs and promos are skipped; duplicates are flagged.
+- **Rules** (Settings → SMS Rules): "if the message contains *swiggy* → name *Swiggy*, category *Food & Dining*, paid with …", or ignore matching messages. A starter set is included.
+- **Automation**: an iOS Shortcuts *Message* automation can forward each bank SMS to `…/spendvault/#sms=<message>`; SpendVault opens with the spend ready to confirm. Home Screen web apps keep separate storage from Safari, so if you use the installed app, have the Shortcut copy the SMS and tap **Paste** in the app.
 
 ## Logos
 

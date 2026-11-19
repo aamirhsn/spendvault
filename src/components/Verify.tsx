@@ -6,19 +6,21 @@ import { IFace } from './Icons';
 
 const GRACE_MS = 60_000;
 let verifiedAt = 0; // module-level so a reveal grace period spans screens
+/** Call right after a successful unlock so the user isn't asked again immediately. */
+export const markVerified = () => { verifiedAt = Date.now(); };
 
 /**
  * Re-authenticate before revealing secrets (card numbers, CVVs, gift card PINs).
  * Uses biometrics when enabled, otherwise the vault passcode.
  */
 export function useVerify() {
-  const { biometricEnabled, status } = useStore();
+  const { biometricEnabled, vault } = useStore();
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
   const pending = useRef<((ok: boolean) => void) | null>(null);
 
-  if (status !== 'unlocked') verifiedAt = 0;
+  if (vault !== 'unlocked') verifiedAt = 0;
 
   const finish = (ok: boolean) => {
     if (ok) verifiedAt = Date.now();
@@ -57,8 +59,8 @@ export function useVerify() {
           else setErr('Incorrect passcode');
         }}
       >
-        <p className="small muted" style={{ margin: 0 }}>Enter your vault passcode to reveal sensitive details.</p>
-        <input className="input" type="password" autoFocus inputMode="text" autoComplete="current-password" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Passcode" />
+        <p className="small muted" style={{ margin: 0 }}>Enter your PIN to reveal sensitive details.</p>
+        <input className="input" type="password" autoFocus inputMode="numeric" maxLength={6} autoComplete="off" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Passcode" />
         {err && <div className="err">{err}</div>}
         <button className="btn primary block" disabled={!code}>Verify</button>
         {biometricEnabled && (

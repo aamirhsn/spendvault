@@ -154,7 +154,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .cell select option { color: initial; }
 .cell input[type='date'] { color: var(--tint); display: flex; justify-content: flex-end; }
 .cell input[type='date']::-webkit-date-and-time-value { text-align: right; }
-.cell textarea { text-align: left; min-height: 72px; resize: vertical; padding: 4px 0; }
+.cell textarea { text-align: left; min-height: 44px; height: 44px; resize: vertical; padding: 4px 0; }
 .cell.stacked { flex-direction: column; align-items: stretch; gap: 6px; }
 .cell.stacked input { text-align: left; }
 .mono { font-family: var(--mono); letter-spacing: 0.02em; }
@@ -272,8 +272,9 @@ button.cell:active, a.cell:active { background: var(--fill); }
 /* ---------- Sheets (modal) ---------- */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, .4); animation: fade .25s var(--ease); }
 .sheet {
-  position: fixed; z-index: 101; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 620px;
-  max-height: calc(100dvh - var(--safe-t) - 10px); display: flex; flex-direction: column;
+  position: fixed; z-index: 101; left: 0; right: 0; bottom: var(--kb, 0px); margin: 0 auto; max-width: 620px;
+  max-height: calc(var(--vvh, 100dvh) - var(--safe-t) - 10px); display: flex; flex-direction: column;
+  transition: bottom .2s var(--ease), max-height .2s var(--ease);
   background: var(--bg); border-radius: 20px 20px 0 0; box-shadow: 0 -10px 40px rgba(0, 0, 0, .2);
   animation: sheetIn .42s var(--ease);
 }
@@ -290,7 +291,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 
 .amount-entry { display: flex; align-items: baseline; justify-content: center; gap: 4px; padding: 6px 0 2px; }
 .amount-entry span { font-family: var(--rounded); font-size: 34px; font-weight: 600; color: var(--label-2); }
-.amount-entry input { font-family: var(--rounded); font-size: 52px; font-weight: 700; letter-spacing: -0.03em; border: none; outline: none; background: transparent; text-align: left; min-width: 0.9em; max-width: 80vw; padding: 0; caret-color: var(--tint); }
+.amount-entry input { font-family: var(--rounded); font-size: 46px; font-weight: 700; letter-spacing: -0.03em; border: none; outline: none; background: transparent; text-align: left; min-width: 0.9em; max-width: 80vw; padding: 0; caret-color: var(--tint); }
 .amount-entry input::placeholder { color: var(--label-3); }
 
 /* ---------- Payment cards (Wallet-style) ---------- */
@@ -477,3 +478,12 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .cell .lead { width: 22px; height: 22px; color: var(--label-2); flex: none; }
 .cell.with-lead .lbl { min-width: 96px; }
 .heat-key { display: inline-flex; gap: 3px; } .heat-key i { width: 9px; height: 9px; border-radius: 2px; background: var(--fill); display: block; }
+
+/* dues shown directly under each credit card */
+.due-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 12px 4px 4px; }
+.due-strip > div { padding: 0 8px; min-width: 0; }
+.due-strip > div + div { border-left: .5px solid var(--sep); }
+.due-strip label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--label-2); }
+.due-strip b { display: block; font-family: var(--rounded); font-size: 18px; font-weight: 700; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.due-strip span { display: block; font-size: 12.5px; color: var(--label-2); margin-top: 2px; white-space: nowrap; }
+.due-strip span.bad { color: var(--red); font-weight: 600; } .due-strip span.warn { color: var(--orange); font-weight: 600; }

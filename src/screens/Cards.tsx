@@ -2,12 +2,13 @@ import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store';
 import type { CardKind, CardNetwork, PaymentCard, Transaction } from '../lib/types';
 import { FINISHES, cardFinishKey, finishFor, suggestFinish } from '../lib/finishes';
-import { cardLength, daysUntil, detectNetwork, digits, groupCardNumber, last4, luhnValid, maskCardNumber, money, nextDayOfMonth, round2, todayISO } from '../lib/format';
+import { cardLength, daysUntil, detectNetwork, digits, groupCardNumber, luhnValid, maskCardNumber, money, nextDayOfMonth, round2, todayISO } from '../lib/format';
 import { Logo, fileToDataUrl, hasLogo } from '../lib/logos';
 import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
-import { ICopy, IEye, IEyeOff, IPlus } from '../components/Icons';
+import { ICopy, IEye, IEyeOff, ILock, IPlus } from '../components/Icons';
+import { VaultGate } from './Lock';
 
 const NETWORKS: CardNetwork[] = ['Visa', 'Mastercard', 'RuPay', 'Amex', 'Diners', 'Discover', 'Other'];
 
@@ -85,7 +86,7 @@ export function CardVisual({ c, reveal }: { c: PaymentCard; reveal?: boolean }) 
                   {c.cvv && <div><div className="pc-sub">CVV</div><div className="pc-last4">{c.cvv}</div></div>}
                 </div>
               ) : (
-                <div className="pc-last4">•••• {last4(c.number)}</div>
+                <div className="pc-last4">•••• {c.last4}</div>
               )}
             </div>
             {!c.art && <div className="pc-net"><NetworkMark network={c.network} light={light} /></div>}
@@ -115,6 +116,22 @@ function cycleSpend(c: PaymentCard, txns: Transaction[]) {
 }
 
 export function Cards() {
+  const { vault, lock } = useStore();
+  if (vault !== 'unlocked') {
+    return (
+      <div className="screen">
+        <div className="wash" style={{ ['--wash' as string]: '#c4eedb' }} />
+        <header className="topbar"><h1>Cards</h1></header>
+        <div className="card" style={{ padding: '22px 12px 26px', maxWidth: 420, margin: '0 auto' }}>
+          <VaultGate />
+        </div>
+      </div>
+    );
+  }
+  return <CardsUnlocked onLock={lock} />;
+}
+
+function CardsUnlocked({ onLock }: { onLock: () => void }) {
   const { data } = useStore();
   const { cards, settings, transactions } = data;
   const [kind, setKind] = useState<'all' | CardKind>('all');
@@ -137,6 +154,7 @@ export function Cards() {
       <header className="topbar">
         <h1>Cards</h1>
         <div className="actions">
+          <CBtn variant="glass" size="lg" icon={<ILock />} label="Lock cards" onClick={onLock} />
           <CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add card" onClick={() => setForm({ open: true })} />
         </div>
       </header>
@@ -170,18 +188,32 @@ export function Cards() {
             {list.map((c) => {
               const due = c.kind === 'credit' && c.dueDay ? nextDayOfMonth(c.dueDay) : null;
               const days = due ? daysUntil(due) : null;
-              const owed = (c.totalDue ?? 0) + (c.overdue ?? 0);
+              const owed = c.totalDue ?? 0;
+              const over = c.overdue ?? 0;
               return (
-                <button key={c.id} style={{ textAlign: 'left' }} onClick={() => setDetail(c.id)} aria-label={`${c.bank} ${c.name} ending ${last4(c.number)}`}>
+                <button key={c.id} className="card" style={{ textAlign: 'left', padding: 10 }} onClick={() => setDetail(c.id)} aria-label={`${c.bank} ${c.name} ending ${c.last4}`}>
                   <CardVisual c={c} />
-                  <div className="card-meta">
-                    <span className="ellipsis muted">{c.name || c.bank} · {c.kind === 'credit' ? 'Credit' : 'Debit'}</span>
-                    {c.kind === 'credit' && owed > 0 && due ? (
-                      <span className={(c.overdue ?? 0) > 0 || days! <= 3 ? 'bad' : days! <= 7 ? 'warn' : ''} style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {fmt(owed)} · {(c.overdue ?? 0) > 0 ? 'overdue' : days === 0 ? 'due today' : `due in ${days}d`}
-                      </span>
-                    ) : c.kind === 'credit' ? <span className="muted">No dues</span> : null}
-                  </div>
+                  {c.kind === 'credit' ? (
+                    <div className="due-strip">
+                      <div>
+                        <label>Due date</label>
+                        <b>{due ? due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—'}</b>
+                        {due && owed + over > 0 ? <span className={days! <= 3 ? 'bad' : days! <= 7 ? 'warn' : ''}>{days === 0 ? 'Today' : `in ${days} days`}</span> : <span>{owed + over > 0 ? 'Set due day' : 'Nothing due'}</span>}
+                      </div>
+                      <div>
+                        <label>Amount due</label>
+                        <b className="num">{fmt(owed)}</b>
+                        <span>{c.minDue ? `Min ${fmt(c.minDue)}` : c.creditLimit ? `of ${fmt(c.creditLimit)} limit` : ' '}</span>
+                      </div>
+                      <div>
+                        <label>Overdue</label>
+                        <b className={`num ${over > 0 ? 'neg' : ''}`}>{over > 0 ? fmt(over) : 'None'}</b>
+                        <span>{over > 0 ? <span className="tag bad">Pay now</span> : <span className="tag good">On track</span>}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="row between foot muted" style={{ padding: '10px 6px 2px' }}><span>{c.name || c.bank} · Debit</span><span>••{c.last4}</span></div>
+                  )}
                 </button>
               );
             })}

@@ -55,3 +55,7 @@ export const ITag = base(<><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z" /><circle 
 export const INote = base(<><path d="M5 4h14v16H5z" /><path d="M9 9h6M9 13h6M9 17h3" /></>);
 export const IUsers = base(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6" /></>);
 export const IHash = base(<path d="M9 3 7 21M17 3l-2 18M4 8.5h16M3 15.5h16" />);
+export const IMessage = base(<><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z" /><path d="M8 10h8M8 13h5" /></>);
+export const IClipboard = base(<><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1M9 10h6M9 14h4" /></>);
+export const IWand = base(<><path d="M4 20 15 9M14 4v2M19 9h2M17.5 5.5 19 4M17.5 12.5 19 14M10 5.5 8.5 4" /></>);
+export const IRule = base(<><path d="M4 6h10M4 12h7M4 18h10" /><path d="M17 4v16M14 17l3 3 3-3" /></>);

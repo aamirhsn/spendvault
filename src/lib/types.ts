@@ -30,7 +30,8 @@ export interface PaymentCard {
   bank: string;
   name: string; // product / nickname e.g. "Regalia Gold"
   network: CardNetwork;
-  number: string;
+  number: string; // secret: blank unless the card vault is unlocked
+  last4: string; // public, used everywhere outside the Cards tab
   holder: string;
   expiry: string; // MM/YY
   cvv: string;
@@ -82,6 +83,18 @@ export interface Settings {
   autoLockMinutes: number;
   theme: 'system' | 'light' | 'dark';
   hideAmounts: boolean;
+  rulesSeeded?: boolean;
+}
+
+/** A rule applied to bank SMS: when `match` appears in the message, set these fields. */
+export interface SmsRule {
+  id: ID;
+  match: string; // keyword, case-insensitive
+  name?: string; // description to use
+  category?: string;
+  paymentType?: PaymentType;
+  cardId?: ID;
+  ignore?: boolean; // skip messages that match
 }
 
 export interface VaultData {
@@ -92,6 +105,8 @@ export interface VaultData {
   settings: Settings;
   /** User-uploaded brand/bank logos (PNG data URLs), keyed by logoKey(name). */
   logos: Record<string, string>;
+  rules: SmsRule[];
+  smsSeen: string[]; // hashes of imported messages, to skip duplicates
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -111,4 +126,6 @@ export const emptyVault = (): VaultData => ({
   merchants: [],
   settings: { ...DEFAULT_SETTINGS },
   logos: {},
+  rules: [],
+  smsSeen: [],
 });

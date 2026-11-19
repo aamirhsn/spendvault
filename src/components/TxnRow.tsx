@@ -1,4 +1,4 @@
-import { last4, money } from '../lib/format';
+import { money } from '../lib/format';
 import { Logo, findBrand } from '../lib/logos';
 import type { Merchant, PaymentCard, Settings, Transaction } from '../lib/types';
 import { CatIcon } from './CatIcon';
@@ -10,7 +10,7 @@ export const PAYMENT_LABELS: Record<string, string> = {
 export function paymentLabel(t: Transaction, cards: PaymentCard[]) {
   if (t.payment.type === 'card') {
     const c = cards.find((x) => x.id === t.payment.cardId);
-    return c ? `${c.name || c.bank} ••${last4(c.number)}` : 'Removed card';
+    return c ? `${c.name || c.bank} ••${c.last4}` : 'Removed card';
   }
   return PAYMENT_LABELS[t.payment.type] ?? 'Other';
 }

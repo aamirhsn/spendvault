@@ -4,7 +4,7 @@ import { useNav } from '../lib/nav';
 import { CATEGORIES } from '../lib/categories';
 import { addMonths, money, monthKey, monthLabel, prettyDate, todayISO } from '../lib/format';
 import { TxnRow, paymentLabel } from '../components/TxnRow';
-import { IBack, IChevron, IPlus, ISearch } from '../components/Icons';
+import { IBack, IChevron, IMessage, IPlus, ISearch } from '../components/Icons';
 import { Empty, CBtn } from '../components/ui';
 
 export function Spends() {
@@ -40,7 +40,7 @@ export function Spends() {
       <div className="wash" style={{ ['--wash' as string]: '#ffdcc2' }} />
       <header className="topbar">
         <h1>Spends</h1>
-        <div className="actions"><CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add spend" onClick={() => nav.newSpend()} /></div>
+        <div className="actions"><CBtn variant="glass" size="lg" icon={<IMessage />} label="Add from messages" onClick={() => nav.openMessages()} /><CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add spend" onClick={() => nav.newSpend()} /></div>
       </header>
 
       <div className="stack">

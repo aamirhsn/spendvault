@@ -1,25 +1,43 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { GiftCard, Merchant, PaymentCard, Settings, Transaction, VaultData } from './types';
+import type { GiftCard, Merchant, PaymentCard, Settings, SmsRule, Transaction, VaultData } from './types';
+import { emptyVault } from './types';
 import * as V from './vault';
-import { round2, uid } from './format';
+import { last4, round2, uid } from './format';
 import { requestPersistence } from './db';
 
-type Status = 'loading' | 'setup' | 'locked' | 'unlocked';
+/**
+ * Two storage tiers:
+ *  • open data   — spends, budgets, merchants, gift card balances, card names/dues. Encrypted with a
+ *                  device key; available as soon as the app opens.
+ *  • card vault  — full card numbers, CVV, expiry, holder, card photos, gift card codes/PINs.
+ *                  Encrypted with a key only your PIN or biometrics can unwrap.
+ */
+type Status = 'loading' | 'migrate' | 'ready';
+type VaultState = 'none' | 'locked' | 'unlocked';
+
+interface UnlockRequest { reason: string; resolve: (ok: boolean) => void }
 
 interface Store {
   status: Status;
+  vault: VaultState;
   data: VaultData;
   meta: V.VaultMeta | null;
   biometricEnabled: boolean;
-  setup(passcode: string, kind: V.PasscodeKind): Promise<void>;
-  unlock(passcode: string): Promise<void>;
+  unlockRequest: UnlockRequest | null;
+  /** Ask for PIN / biometrics (or PIN setup). Resolves true once the card vault is unlocked. */
+  requestUnlock(reason: string): Promise<boolean>;
+  setupPin(pin: string): Promise<void>;
+  unlock(pin: string): Promise<void>;
   unlockBiometric(): Promise<void>;
+  migrate(passcode: string | null): Promise<V.PasscodeKind>;
+  finishMigration(): void;
   lock(): void;
   refreshMeta(): Promise<void>;
   replaceAll(data: VaultData): Promise<void>;
   saveTransaction(t: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<void>;
+  saveTransactions(ts: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>[], seen?: string[]): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
-  saveCard(c: Omit<PaymentCard, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<void>;
+  saveCard(c: Omit<PaymentCard, 'id' | 'createdAt' | 'updatedAt' | 'last4'> & { id?: string; last4?: string }): Promise<void>;
   deleteCard(id: string): Promise<void>;
   saveGiftCard(g: Omit<GiftCard, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<void>;
   deleteGiftCard(id: string): Promise<void>;
@@ -27,6 +45,7 @@ interface Store {
   deleteMerchant(id: string): Promise<void>;
   updateSettings(patch: Partial<Settings>): Promise<void>;
   setLogo(key: string, dataUrl: string | null): Promise<void>;
+  saveRules(rules: SmsRule[]): Promise<void>;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -36,15 +55,33 @@ export const useStore = () => {
   return s;
 };
 
+// ---- split / merge between the two tiers ----
+function split(d: VaultData): { pub: VaultData; sec: V.Secrets } {
+  const sec = V.emptySecrets();
+  const cards = d.cards.map((c) => {
+    sec.cards[c.id] = { number: c.number, cvv: c.cvv, expiry: c.expiry, holder: c.holder, art: c.art };
+    return { ...c, last4: c.last4 || last4(c.number), number: '', cvv: '', expiry: '', holder: '', art: undefined };
+  });
+  const giftCards = d.giftCards.map((g) => {
+    sec.gifts[g.id] = { code: g.code, pin: g.pin };
+    return { ...g, code: '', pin: '' };
+  });
+  return { pub: { ...d, cards, giftCards }, sec };
+}
+function merge(d: VaultData, sec: V.Secrets): VaultData {
+  return {
+    ...d,
+    cards: d.cards.map((c) => (sec.cards[c.id] ? { ...c, ...sec.cards[c.id] } : c)),
+    giftCards: d.giftCards.map((g) => (sec.gifts[g.id] ? { ...g, ...sec.gifts[g.id] } : g)),
+  };
+}
+
 function upsert<T extends { id: string; createdAt?: number; updatedAt: number }>(list: T[], item: Partial<T> & { id?: string }): T[] {
   const now = Date.now();
-  if (item.id && list.some((x) => x.id === item.id)) {
-    return list.map((x) => (x.id === item.id ? ({ ...x, ...item, updatedAt: now } as T) : x));
-  }
+  if (item.id && list.some((x) => x.id === item.id)) return list.map((x) => (x.id === item.id ? ({ ...x, ...item, updatedAt: now } as T) : x));
   return [{ ...item, id: item.id ?? uid(), createdAt: now, updatedAt: now } as T, ...list];
 }
 
-/** Apply (sign=-1) or refund (sign=+1) gift card usage to balances. */
 function adjustGiftBalances(giftCards: GiftCard[], uses: Transaction['giftCards'], sign: 1 | -1) {
   if (!uses.length) return giftCards;
   return giftCards.map((g) => {
@@ -52,69 +89,65 @@ function adjustGiftBalances(giftCards: GiftCard[], uses: Transaction['giftCards'
     return used ? { ...g, balance: Math.max(0, round2(g.balance + sign * used)), updatedAt: Date.now() } : g;
   });
 }
+const sortTx = (a: Transaction, b: Transaction) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
-  const [data, setData] = useState<VaultData>(() => ({ transactions: [], cards: [], giftCards: [], merchants: [], settings: {} as Settings, logos: {} }));
+  const [vault, setVault] = useState<VaultState>('none');
+  const [data, setData] = useState<VaultData>(emptyVault);
   const [meta, setMeta] = useState<V.VaultMeta | null>(null);
+  const [unlockRequest, setUnlockRequest] = useState<UnlockRequest | null>(null);
   const dek = useRef<CryptoKey | null>(null);
   const dataRef = useRef(data);
   const saveChain = useRef<Promise<void>>(Promise.resolve());
+  const timer = useRef(0);
+
+  const setAll = (d: VaultData) => {
+    dataRef.current = d;
+    setData(d);
+  };
 
   useEffect(() => {
-    V.loadMeta().then((m) => {
-      setMeta(m ?? null);
-      setStatus(m ? 'locked' : 'setup');
-    });
+    (async () => {
+      const m = (await V.loadMeta()) ?? null;
+      setMeta(m);
+      if (await V.hasLegacyData()) {
+        setVault('locked');
+        setStatus('migrate');
+        return;
+      }
+      setAll((await V.loadOpen()) ?? emptyVault());
+      setVault(m ? 'locked' : 'none');
+      setStatus('ready');
+      requestPersistence();
+    })();
   }, []);
 
-  const opened = useCallback((r: { dek: CryptoKey; data: VaultData; meta: V.VaultMeta }) => {
-    dek.current = r.dek;
-    dataRef.current = r.data;
-    setData(r.data);
-    setMeta(r.meta);
-    setStatus('unlocked');
-    requestPersistence();
-  }, []);
-
-  const flushRef = useRef<() => unknown>(() => undefined);
-  const lock = useCallback(() => {
-    flushRef.current();
-    dek.current = null;
-    const blank = { transactions: [], cards: [], giftCards: [], merchants: [], settings: dataRef.current.settings, logos: {} } as VaultData;
-    dataRef.current = blank;
-    setData(blank);
-    setStatus((s) => (s === 'unlocked' ? 'locked' : s));
-  }, []);
-
-  /**
-   * Mutate state immediately, then persist the encrypted snapshot shortly after.
-   * Rapid edits (typing in settings) coalesce into one encryption + write.
-   */
-  const pending = useRef<{ timer: number; key: CryptoKey } | null>(null);
+  /** Persist: open tier always; secure tier only while unlocked (otherwise secrets aren't in memory). */
   const flush = useCallback(() => {
-    const p = pending.current;
-    if (!p) return saveChain.current;
-    clearTimeout(p.timer);
-    pending.current = null;
+    clearTimeout(timer.current);
+    timer.current = 0;
     const snapshot = dataRef.current;
-    saveChain.current = saveChain.current.then(() => V.saveData(p.key, snapshot)).catch((e) => console.error('Save failed', e));
+    const key = dek.current;
+    saveChain.current = saveChain.current
+      .then(async () => {
+        const { pub, sec } = split(snapshot);
+        await V.saveOpen(pub);
+        if (key) await V.saveSecure(key, sec);
+      })
+      .catch((e) => console.error('Save failed', e));
     return saveChain.current;
   }, []);
 
   const commit = useCallback(async (fn: (d: VaultData) => VaultData, immediate = true) => {
-    if (!dek.current) throw new Error('Vault is locked');
-    const next = fn(dataRef.current);
-    dataRef.current = next;
-    setData(next);
-    if (pending.current) clearTimeout(pending.current.timer);
-    pending.current = { key: dek.current, timer: window.setTimeout(flush, immediate ? 0 : 400) };
+    setAll(fn(dataRef.current));
+    clearTimeout(timer.current);
     if (immediate) await flush();
+    else timer.current = window.setTimeout(flush, 400);
   }, [flush]);
 
-  flushRef.current = flush;
   useEffect(() => {
-    const onHide = () => { if (document.hidden) flush(); };
+    const onHide = () => { if (document.hidden && timer.current) flush(); };
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', flush);
     return () => {
@@ -123,72 +156,112 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [flush]);
 
-  // ---- Auto-lock on inactivity and when hidden ----
+  const opened = useCallback(async (r: { dek: CryptoKey; meta: V.VaultMeta }) => {
+    dek.current = r.dek;
+    setMeta(r.meta);
+    setAll(merge(dataRef.current, await V.loadSecure(r.dek)));
+    setVault('unlocked');
+  }, []);
+
+  const lock = useCallback(() => {
+    if (!dek.current) return;
+    if (timer.current) flush();
+    dek.current = null;
+    setAll(split(dataRef.current).pub);
+    setVault((v) => (v === 'unlocked' ? 'locked' : v));
+  }, [flush]);
+
+  // Auto-lock the card vault after inactivity / time in background.
   useEffect(() => {
-    if (status !== 'unlocked') return;
+    if (vault !== 'unlocked') return;
     const minutes = data.settings.autoLockMinutes ?? 5;
     if (!minutes) return;
     const ms = minutes * 60_000;
-    let timer = window.setTimeout(lock, ms);
+    let t = window.setTimeout(lock, ms);
     let hiddenAt = 0;
-    const bump = () => {
-      clearTimeout(timer);
-      timer = window.setTimeout(lock, ms);
-    };
+    const bump = () => { clearTimeout(t); t = window.setTimeout(lock, ms); };
     const vis = () => {
       if (document.hidden) hiddenAt = Date.now();
       else if (hiddenAt && Date.now() - hiddenAt >= ms) lock();
       else bump();
     };
-    const evs = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+    const evs = ['pointerdown', 'keydown'];
     evs.forEach((e) => window.addEventListener(e, bump, { passive: true }));
     document.addEventListener('visibilitychange', vis);
     return () => {
-      clearTimeout(timer);
+      clearTimeout(t);
       evs.forEach((e) => window.removeEventListener(e, bump));
       document.removeEventListener('visibilitychange', vis);
     };
-  }, [status, data.settings.autoLockMinutes, lock]);
+  }, [vault, data.settings.autoLockMinutes, lock]);
+
+  const requestUnlock = useCallback((reason: string) => {
+    if (dek.current) return Promise.resolve(true);
+    return new Promise<boolean>((resolve) => setUnlockRequest({ reason, resolve: (ok) => { setUnlockRequest(null); resolve(ok); } }));
+  }, []);
 
   const store = useMemo<Store>(
     () => ({
       status,
+      vault,
       data,
       meta,
       biometricEnabled: !!meta?.biometric,
-      setup: async (p, k) => opened(await V.createVault(p, k)),
-      unlock: async (p) => opened(await V.unlockWithPasscode(p)),
+      unlockRequest,
+      requestUnlock,
+      setupPin: async (pin) => {
+        const r = await V.createVault(pin, 'pin');
+        dek.current = r.dek;
+        setMeta(r.meta);
+        setVault('unlocked');
+        await flush();
+      },
+      unlock: async (pin) => opened(await V.unlockWithPasscode(pin)),
       unlockBiometric: async () => opened(await V.unlockWithBiometric()),
+      migrate: async (passcode) => {
+        const r = passcode != null ? await V.unlockWithPasscode(passcode) : await V.unlockWithBiometric();
+        const legacy = await V.loadData(r.dek);
+        dek.current = r.dek;
+        setMeta(r.meta);
+        const cards = legacy.cards.map((c) => ({ ...c, last4: c.last4 || last4(c.number) }));
+        setAll({ ...legacy, cards });
+        await flush();
+        await V.deleteLegacyData();
+        setVault('unlocked');
+        // Password vaults stay on the migration screen until a PIN replaces the password.
+        if (r.meta.passcode.kind === 'pin' || passcode == null) setStatus('ready');
+        requestPersistence();
+        return r.meta.passcode.kind;
+      },
+      finishMigration: () => setStatus('ready'),
       lock,
       refreshMeta: async () => setMeta((await V.loadMeta()) ?? null),
-      replaceAll: (d) => commit(() => d),
+      replaceAll: (d) => commit(() => ({ ...d, cards: d.cards.map((c) => ({ ...c, last4: c.last4 || last4(c.number) })) })),
       saveTransaction: (t) =>
         commit((d) => {
           const prev = t.id ? d.transactions.find((x) => x.id === t.id) : undefined;
           let giftCards = d.giftCards;
           if (prev) giftCards = adjustGiftBalances(giftCards, prev.giftCards, 1);
           giftCards = adjustGiftBalances(giftCards, t.giftCards, -1);
-          const transactions = upsert(d.transactions, t as Partial<Transaction>).sort(
-            (a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt,
-          );
-          return { ...d, transactions, giftCards };
+          return { ...d, transactions: upsert(d.transactions, t as Partial<Transaction>).sort(sortTx), giftCards };
+        }),
+      saveTransactions: (ts, seen = []) =>
+        commit((d) => {
+          let list = d.transactions;
+          for (const t of ts) list = upsert(list, t as Partial<Transaction>);
+          return { ...d, transactions: list.sort(sortTx), smsSeen: [...seen, ...(d.smsSeen ?? [])].slice(0, 1000) };
         }),
       deleteTransaction: (id) =>
         commit((d) => {
           const prev = d.transactions.find((x) => x.id === id);
-          return {
-            ...d,
-            transactions: d.transactions.filter((x) => x.id !== id),
-            giftCards: prev ? adjustGiftBalances(d.giftCards, prev.giftCards, 1) : d.giftCards,
-          };
+          return { ...d, transactions: d.transactions.filter((x) => x.id !== id), giftCards: prev ? adjustGiftBalances(d.giftCards, prev.giftCards, 1) : d.giftCards };
         }),
-      saveCard: (c) => commit((d) => ({ ...d, cards: upsert(d.cards, c as Partial<PaymentCard>) })),
+      saveCard: (c) => commit((d) => ({ ...d, cards: upsert(d.cards, { ...c, last4: c.number ? last4(c.number) : c.last4 } as Partial<PaymentCard>) })),
       deleteCard: (id) => commit((d) => ({ ...d, cards: d.cards.filter((c) => c.id !== id) })),
       saveGiftCard: (g) => commit((d) => ({ ...d, giftCards: upsert(d.giftCards, g as Partial<GiftCard>) })),
       deleteGiftCard: (id) => commit((d) => ({ ...d, giftCards: d.giftCards.filter((g) => g.id !== id) })),
       saveMerchant: async (m) => {
-        const existing = m.id ?? dataRef.current.merchants.find((x) => x.vpa && x.vpa.toLowerCase() === m.vpa.toLowerCase())?.id;
-        const id = existing ?? uid();
+        const id = m.id ?? dataRef.current.merchants.find((x) => x.vpa && x.vpa.toLowerCase() === m.vpa.toLowerCase())?.id ?? uid();
         await commit((d) => {
           const now = Date.now();
           const merchants = d.merchants.some((x) => x.id === id)
@@ -207,8 +280,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           else delete logos[key];
           return { ...d, logos };
         }),
+      saveRules: (rules) => commit((d) => ({ ...d, rules })),
     }),
-    [status, data, meta, opened, lock, commit],
+    [status, vault, data, meta, unlockRequest, requestUnlock, opened, lock, commit, flush],
   );
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;

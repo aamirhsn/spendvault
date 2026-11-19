@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
 import type { GiftCard } from '../lib/types';
@@ -8,7 +8,7 @@ import { Logo, hasLogo } from '../lib/logos';
 import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
-import { ICopy, IEye, IEyeOff, IPlus } from '../components/Icons';
+import { ICopy, IEye, IEyeOff, ILock, IPlus } from '../components/Icons';
 
 type Filter = 'active' | 'used' | 'archived';
 
@@ -118,16 +118,23 @@ function GiftDetail({ g, onClose, onEdit }: { g: GiftCard; onClose: () => void; 
   const cur = data.settings.currency;
   const uses = data.transactions.filter((t) => t.giftCards.some((u) => u.giftCardId === g.id));
 
-  const reveal = async () => (show ? setShow(false) : (await verify()) && setShow(true));
-  const copy = async (v: string, label: string) => (await verify()) && copyText(v, label);
-  const Secret = ({ label, value }: { label: string; value: string }) => (
+  const { requestUnlock } = useStore();
+  const ready = async () => (await requestUnlock('Unlock to see gift card codes')) && (await verify());
+  const reveal = async () => (show ? setShow(false) : (await ready()) && setShow(true));
+  // Read the latest value after unlocking (codes are only in memory while the vault is open).
+  const copy = async (k: 'code' | 'pin', label: string) => {
+    if (!(await ready())) return;
+    await new Promise((r) => setTimeout(r, 60)); // let the unlocked values render
+    copyText(document.querySelector<HTMLElement>(`[data-secret="${k}"]`)?.dataset.value ?? '', label);
+  };
+  const Secret = ({ label, value, k }: { label: string; value: string; k: 'code' | 'pin' }) => (
     <div className="cell">
       <span className="grow">
         <div className="st" style={{ marginTop: 0 }}>{label}</div>
-        <div className="mono" style={{ fontSize: 17, marginTop: 2, wordBreak: 'break-all' }}>{show ? value : '•••• ••••'}</div>
+        <div className="mono" data-secret={k} data-value={value} style={{ fontSize: 17, marginTop: 2, wordBreak: 'break-all' }}>{show ? value || '—' : '•••• ••••'}</div>
       </span>
       <button className="glass-btn" style={{ width: 36, height: 36, background: 'var(--fill)', color: 'var(--tint)' }} onClick={reveal} aria-label={show ? 'Hide' : 'Show'}>{show ? <IEyeOff width={18} /> : <IEye width={18} />}</button>
-      <button className="glass-btn" style={{ width: 36, height: 36, background: 'var(--fill)', color: 'var(--tint)' }} onClick={() => copy(value, `${label} copied`)} aria-label={`Copy ${label}`}><ICopy width={18} /></button>
+      <button className="glass-btn" style={{ width: 36, height: 36, background: 'var(--fill)', color: 'var(--tint)' }} onClick={() => copy(k, `${label} copied`)} aria-label={`Copy ${label}`}><ICopy width={18} /></button>
     </div>
   );
 
@@ -136,8 +143,8 @@ function GiftDetail({ g, onClose, onEdit }: { g: GiftCard; onClose: () => void; 
       <div className="stack-lg">
         <GiftPass g={g} currency={cur} hide={false} big />
         <Group header="Redeem">
-          <Secret label="Card number / code" value={g.code || '—'} />
-          {g.pin && <Secret label="PIN" value={g.pin} />}
+          <Secret k="code" label="Card number / code" value={g.code} />
+          <Secret k="pin" label="PIN" value={g.pin} />
         </Group>
         <Group>
           <NavRow title="Balance" value={<b style={{ color: 'var(--label)' }}>{money(g.balance, cur)}</b>} />
@@ -165,7 +172,7 @@ function GiftDetail({ g, onClose, onEdit }: { g: GiftCard; onClose: () => void; 
 }
 
 function GiftForm({ edit, onClose }: { edit?: GiftCard; onClose: () => void }) {
-  const { saveGiftCard, data } = useStore();
+  const { saveGiftCard, data, vault, requestUnlock } = useStore();
   const known = GIFT_BRANDS.some((b) => b.name === edit?.brand);
   const [brand, setBrand] = useState(edit ? (known ? edit.brand : 'Other') : 'Amazon');
   const [custom, setCustom] = useState(edit && !known ? edit.brand : '');
@@ -177,6 +184,12 @@ function GiftForm({ edit, onClose }: { edit?: GiftCard; onClose: () => void }) {
   const [notes, setNotes] = useState(edit?.notes ?? '');
   const [err, setErr] = useState('');
   const name = brand === 'Other' ? custom.trim() : brand;
+  // Codes live in the PIN vault: load them once it's unlocked.
+  useEffect(() => {
+    if (vault !== 'unlocked' || !edit) return;
+    const cur = data.giftCards.find((x) => x.id === edit.id);
+    if (cur) { setCode((c) => c || cur.code); setPin((p) => p || cur.pin); }
+  }, [vault, edit, data.giftCards]);
   const clean = (s: string) => s.replace(/[^\d.]/g, '');
 
   const save = async () => {
@@ -184,6 +197,7 @@ function GiftForm({ edit, onClose }: { edit?: GiftCard; onClose: () => void }) {
     const b = balance === '' ? v : Number(balance) || 0;
     if (!name) return setErr('Enter the brand name.');
     if (!(v > 0)) return setErr('Enter the gift card value.');
+    if ((code.trim() || pin.trim()) && !(await requestUnlock('Unlock to save the code securely'))) return;
     await saveGiftCard({ id: edit?.id, brand: name, code: code.trim(), pin: pin.trim(), value: round2(v), balance: round2(b), expiry, notes: notes.trim(), archived: edit?.archived ?? false });
     toast(edit ? 'Gift card updated' : 'Gift card added');
     onClose();
@@ -201,7 +215,8 @@ function GiftForm({ edit, onClose }: { edit?: GiftCard; onClose: () => void }) {
           {brand === 'Other' && <FieldRow label="Brand name"><input placeholder="Required" value={custom} onChange={(e) => setCustom(e.target.value)} /></FieldRow>}
           {name && <LogoPicker name={name} label="Logo" />}
         </Group>
-        <Group footer="Codes and PINs are encrypted and hidden until you verify.">
+        <Group footer="Codes and PINs are kept in your PIN-protected vault.">
+          {edit && vault !== 'unlocked' && <button className="cell tint" onClick={() => requestUnlock('Unlock to view or change the code')}><ILock width={17} /> Unlock to edit code & PIN</button>}
           <FieldRow label="Card / code"><input className="mono" autoComplete="off" spellCheck={false} placeholder="Required" value={code} onChange={(e) => setCode(e.target.value)} /></FieldRow>
           <FieldRow label="PIN"><input className="mono" autoComplete="off" spellCheck={false} placeholder="Optional" value={pin} onChange={(e) => setPin(e.target.value)} /></FieldRow>
         </Group>

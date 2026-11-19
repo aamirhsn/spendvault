@@ -11,6 +11,7 @@ export interface Nav {
   newSpend(draft?: SpendDraft): void;
   editSpend(t: Transaction): void;
   openSettings(): void;
+  openMessages(text?: string): void;
 }
 
 export const NavCtx = createContext<Nav | null>(null);

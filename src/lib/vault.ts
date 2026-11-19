@@ -12,7 +12,7 @@ import {
   sealJson,
   toB64,
 } from './crypto';
-import { idbClear, idbGet, idbSet } from './db';
+import { idbClear, idbDel, idbGet, idbSet } from './db';
 import { type VaultData, emptyVault, DEFAULT_SETTINGS } from './types';
 import { biometricSecret, registerBiometric } from './webauthn';
 
@@ -52,9 +52,8 @@ export async function createVault(passcode: string, kind: PasscodeKind) {
   const dek = await importDek(dekRaw);
   dekRaw.fill(0);
   await idbSet(META_KEY, meta);
-  const data = emptyVault();
-  await saveData(dek, data);
-  return { dek, data, meta };
+  await saveSecure(dek, emptySecrets());
+  return { dek, meta };
 }
 
 async function unwrapWithPasscode(meta: VaultMeta, passcode: string) {
@@ -91,7 +90,7 @@ export async function unlockWithPasscode(passcode: string) {
   await idbSet(META_KEY, meta);
   const dek = await importDek(raw);
   raw.fill(0);
-  return { dek, data: await loadData(dek), meta };
+  return { dek, meta };
 }
 
 export async function unlockWithBiometric() {
@@ -107,7 +106,7 @@ export async function unlockWithBiometric() {
   }
   const dek = await importDek(raw);
   raw.fill(0);
-  return { dek, data: await loadData(dek), meta };
+  return { dek, meta };
 }
 
 /** Re-verify the user (for revealing card numbers etc). Biometric if enabled, otherwise passcode. */
@@ -168,6 +167,57 @@ export async function changePasscode(current: string, next: string, kind: Passco
   raw.fill(0);
   await idbSet(META_KEY, meta);
 }
+
+// ---------- v3 storage: open data (device key) + secure vault (PIN / biometric) ----------
+
+/** Secrets that stay behind the PIN / biometric vault. */
+export interface Secrets {
+  cards: Record<string, { number: string; cvv: string; expiry: string; holder: string; art?: string }>;
+  gifts: Record<string, { code: string; pin: string }>;
+}
+export const emptySecrets = (): Secrets => ({ cards: {}, gifts: {} });
+
+const OPEN_KEY = 'open';
+const SECURE_KEY = 'secure';
+const DEVICE_KEY = 'deviceKey';
+const OPEN_AAD = 'spendvault:open:v3';
+const SECURE_AAD = 'spendvault:secure:v3';
+
+/**
+ * A random AES-256 key created on this device and stored as a non-extractable CryptoKey.
+ * Everyday data (spends, budgets, gift card balances) is encrypted with it so the app can
+ * open without a PIN. Card numbers and codes are additionally protected by the PIN vault.
+ */
+async function deviceKey(): Promise<CryptoKey> {
+  const existing = await idbGet<CryptoKey>(DEVICE_KEY);
+  if (existing) return existing;
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  await idbSet(DEVICE_KEY, key);
+  return key;
+}
+
+export async function loadOpen(): Promise<VaultData | null> {
+  const sealed = await idbGet<Sealed>(OPEN_KEY);
+  if (!sealed) return null;
+  const data = await openJson<VaultData>(await deviceKey(), sealed, OPEN_AAD);
+  return { ...emptyVault(), ...data, settings: { ...DEFAULT_SETTINGS, ...data.settings } };
+}
+export async function saveOpen(data: VaultData) {
+  await idbSet(OPEN_KEY, await sealJson(await deviceKey(), data, OPEN_AAD));
+}
+export async function loadSecure(dek: CryptoKey): Promise<Secrets> {
+  const sealed = await idbGet<Sealed>(SECURE_KEY);
+  if (!sealed) return emptySecrets();
+  return { ...emptySecrets(), ...(await openJson<Secrets>(dek, sealed, SECURE_AAD)) };
+}
+export async function saveSecure(dek: CryptoKey, s: Secrets) {
+  await idbSet(SECURE_KEY, await sealJson(dek, s, SECURE_AAD));
+}
+/** True when this device holds v1/v2 data that must be unlocked once to migrate. */
+export async function hasLegacyData() {
+  return !!(await idbGet(DATA_KEY)) && !(await idbGet(OPEN_KEY));
+}
+export const deleteLegacyData = () => idbDel(DATA_KEY);
 
 export async function loadData(dek: CryptoKey): Promise<VaultData> {
   const sealed = await idbGet<Sealed>(DATA_KEY);

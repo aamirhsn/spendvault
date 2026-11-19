@@ -3,7 +3,8 @@ import { useStore } from './lib/store';
 import { NavCtx, type Nav, type SpendDraft, type Tab } from './lib/nav';
 import { TabBar } from './components/TabBar';
 import { ToastHost } from './components/ui';
-import { LockScreen } from './screens/Lock';
+import { MigrateScreen, UnlockSheet } from './screens/Lock';
+import { MessagesSheet } from './screens/Messages';
 import { Home } from './screens/Home';
 import { Spends } from './screens/Spends';
 import { SpendForm } from './screens/SpendForm';
@@ -44,16 +45,26 @@ function useTheme(pref: string | undefined) {
 
 export default function App() {
   const { status, data } = useStore();
-  useTheme(status === 'unlocked' ? data.settings.theme : undefined);
+  useTheme(status === 'ready' ? data.settings.theme : undefined);
   const [tab, setTab] = useState<Tab>('home');
   const [form, setForm] = useState<{ open: boolean; draft?: SpendDraft; edit?: Transaction }>({ open: false });
   const [settings, setSettings] = useState(false);
+  const [messages, setMessages] = useState<{ open: boolean; text?: string }>({ open: false });
 
+  // Bank SMS handed over by an iOS Shortcut: …/spendvault/#sms=<url-encoded message>
   useEffect(() => {
-    if (status !== 'unlocked') {
-      setForm({ open: false });
-      setSettings(false);
-    }
+    if (status !== 'ready') return;
+    const read = () => {
+      const m = location.hash.match(/[#&]sms=([^&]*)/);
+      if (!m) return;
+      let text = m[1];
+      try { text = decodeURIComponent(text.replace(/\+/g, ' ')); } catch { /* keep raw */ }
+      history.replaceState(null, '', location.pathname + location.search);
+      setMessages({ open: true, text });
+    };
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
   }, [status]);
 
   const go = useCallback((t: Tab) => {
@@ -68,15 +79,16 @@ export default function App() {
       newSpend: (draft) => setForm({ open: true, draft }),
       editSpend: (t) => setForm({ open: true, edit: t }),
       openSettings: () => setSettings(true),
+      openMessages: (text?: string) => setMessages({ open: true, text }),
     }),
     [tab, go],
   );
 
   if (status === 'loading') return null;
-  if (status !== 'unlocked')
+  if (status === 'migrate')
     return (
       <>
-        <LockScreen />
+        <MigrateScreen />
         <ToastHost />
       </>
     );
@@ -93,6 +105,8 @@ export default function App() {
       <TabBar tab={tab} onChange={go} onAdd={() => setForm({ open: true })} />
       {form.open && <SpendForm draft={form.draft} edit={form.edit} onClose={() => setForm({ open: false })} />}
       <SettingsSheet open={settings} onClose={() => setSettings(false)} />
+      {messages.open && <MessagesSheet initialText={messages.text} onClose={() => setMessages({ open: false })} />}
+      <UnlockSheet />
       <ToastHost />
     </NavCtx.Provider>
   );

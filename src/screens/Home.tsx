@@ -19,7 +19,7 @@ const ordinal = (n: number) => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10
 const WEEKS = 16;
 
 export function Home() {
-  const { data, biometricEnabled } = useStore();
+  const { data, biometricEnabled, vault, requestUnlock } = useStore();
   const nav = useNav();
   const { transactions: txns, cards, giftCards, merchants, settings } = data;
   const cur = settings.currency;
@@ -156,8 +156,11 @@ export function Home() {
           </div>
         </div>
 
-        {!biometricEnabled && (
-          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Turn on Face ID / Touch ID" subtitle="Unlock faster and reveal cards securely" onClick={nav.openSettings} /></div>
+        {vault === 'none' && (data.cards.length > 0 || data.giftCards.length > 0) && (
+          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Protect your cards with a PIN" subtitle="Card numbers and gift codes stay behind PIN / Face ID" onClick={() => requestUnlock('Create a PIN for your cards')} /></div>
+        )}
+        {vault !== 'none' && !biometricEnabled && (
+          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Use Face ID for your cards" subtitle="Faster than typing your PIN" onClick={nav.openSettings} /></div>
         )}
 
         <section>
@@ -210,7 +213,7 @@ export function Home() {
                   <span className="logo-round">{hasLogo(c.bank, data.logos) ? <Logo name={c.bank} preferMark /> : <b>{c.bank.slice(0, 1)}</b>}</span>
                   <span className="grow">
                     <div className="t ellipsis" style={{ fontWeight: 500 }}>{c.name || c.bank}</div>
-                    <div className="st">Due {due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ••{c.number.slice(-4)}</div>
+                    <div className="st">Due {due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ••{c.last4}</div>
                   </span>
                   <span className="amt-col">
                     <div className="a neg">{fmt(owed)}</div>

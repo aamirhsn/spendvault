@@ -4,11 +4,14 @@ import * as V from '../lib/vault';
 import { platformAuthenticatorAvailable } from '../lib/webauthn';
 import { todayISO } from '../lib/format';
 import type { Settings } from '../lib/types';
-import { FieldRow, Group, NavRow, Segmented, Sheet, Toggle, toast } from '../components/ui';
+import { FieldRow, Group, NavRow, Sheet, Toggle, toast } from '../components/ui';
 import { BudgetsSheet } from '../components/Budgets';
 import { money } from '../lib/format';
 import { paymentLabel } from '../components/TxnRow';
-import { IDownload, IFace, IKey, ILock, ITimer, ITrash, IUpload, IWallet } from '../components/Icons';
+import { IDownload, IFace, IKey, ILock, IMessage, IRule, ITimer, ITrash, IUpload, IWallet } from '../components/Icons';
+import { PinPad } from './Lock';
+import { RulesSheet } from './Messages';
+import { useNav } from '../lib/nav';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'CAD', 'JPY'];
 const LOCKS = [1, 2, 5, 15, 30, 0];
@@ -22,11 +25,12 @@ function download(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-type Panel = null | 'bio' | 'passcode' | 'export' | 'import' | 'wipe' | 'csv';
+type Panel = null | 'bio' | 'passcode' | 'export' | 'import' | 'wipe' | 'csv' | 'rules';
 
 export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const store = useStore();
-  const { data, updateSettings, biometricEnabled, lock, meta } = store;
+  const { data, updateSettings, biometricEnabled, lock, vault, requestUnlock } = store;
+  const { openMessages } = useNav();
   const s = data.settings;
   const [panel, setPanel] = useState<Panel>(null);
   const [bioAvail, setBioAvail] = useState<boolean | null>(null);
@@ -57,22 +61,33 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
           <div className="cell"><span className="grow">Hide amounts</span><Toggle label="Hide amounts" on={s.hideAmounts} onChange={(v) => set({ hideAmounts: v })} /></div>
         </Group>
 
-        <Group header="Security" footer={bioAvail === false && !biometricEnabled ? 'This browser has no Face ID / Touch ID / fingerprint authenticator available.' : 'Face ID / fingerprint unlocks the vault with a key held in your device’s secure hardware.'}>
-          <NavRow icon={<IFace />} iconBg="var(--green)" title="Face ID / Touch ID" right={<Toggle label="Biometric unlock" on={biometricEnabled} onChange={async (on) => {
-            if (on) setPanel('bio');
-            else { await V.disableBiometric(); await store.refreshMeta(); toast('Biometric unlock turned off'); }
-          }} />} />
-          <NavRow icon={<ITimer />} iconBg="var(--indigo)" title="Auto-Lock" right={
-            <select style={{ flex: 'none', width: 'auto' }} value={s.autoLockMinutes} onChange={(e) => set({ autoLockMinutes: Number(e.target.value) })} aria-label="Auto-lock">
-              {LOCKS.map((m) => <option key={m} value={m}>{m ? `${m} min` : 'Never'}</option>)}
-            </select>} />
-          <NavRow icon={<IKey />} iconBg="var(--orange)" title={`Change ${meta?.passcode.kind === 'pin' ? 'PIN' : 'Password'}`} onClick={() => setPanel('passcode')} />
-          <NavRow icon={<ILock />} iconBg="var(--gray)" title="Lock Now" onClick={() => { onClose(); lock(); }} />
+        <Group header="Card vault" footer={vault === 'none' ? 'Your card numbers, CVVs and gift card codes are protected by a 6-digit PIN. Everything else opens without one.' : bioAvail === false && !biometricEnabled ? 'This browser has no Face ID / Touch ID available.' : 'Only the Cards tab and gift card codes ask for your PIN or Face ID.'}>
+          {vault === 'none' ? (
+            <NavRow icon={<IKey />} iconBg="var(--orange)" title="Set Up PIN" onClick={() => requestUnlock('Create a PIN for your cards')} />
+          ) : (
+            <>
+              <NavRow icon={<IFace />} iconBg="var(--green)" title="Face ID / Touch ID" right={<Toggle label="Biometric unlock" on={biometricEnabled} onChange={async (on) => {
+                if (on) setPanel('bio');
+                else { await V.disableBiometric(); await store.refreshMeta(); toast('Face ID / Touch ID turned off'); }
+              }} />} />
+              <NavRow icon={<ITimer />} iconBg="var(--indigo)" title="Lock Cards After" right={
+                <select style={{ flex: 'none', width: 'auto' }} value={s.autoLockMinutes} onChange={(e) => set({ autoLockMinutes: Number(e.target.value) })} aria-label="Lock cards after">
+                  {LOCKS.map((m) => <option key={m} value={m}>{m ? `${m} min` : 'Never'}</option>)}
+                </select>} />
+              <NavRow icon={<IKey />} iconBg="var(--orange)" title="Change PIN" onClick={() => setPanel('passcode')} />
+              {vault === 'unlocked' && <NavRow icon={<ILock />} iconBg="var(--gray)" title="Lock Cards Now" onClick={() => { lock(); toast('Cards locked'); }} />}
+            </>
+          )}
+        </Group>
+
+        <Group header="Messages">
+          <NavRow icon={<IMessage />} iconBg="var(--teal)" title="Import from Bank SMS" onClick={() => { onClose(); openMessages(); }} />
+          <NavRow icon={<IRule />} iconBg="var(--indigo)" title="SMS Rules" value={`${(data.rules ?? []).length}`} onClick={() => setPanel('rules')} />
         </Group>
 
         <Group header="Data" footer="Backups are encrypted with a password you choose and can be restored on any device.">
-          <NavRow icon={<IDownload />} iconBg="var(--tint)" title="Export Encrypted Backup" onClick={() => setPanel('export')} />
-          <NavRow icon={<IUpload />} iconBg="var(--teal)" title="Restore from Backup" onClick={() => setPanel('import')} />
+          <NavRow icon={<IDownload />} iconBg="var(--tint)" title="Export Encrypted Backup" onClick={async () => { if (vault === 'none' || (await requestUnlock('Unlock to include cards in the backup'))) setPanel('export'); }} />
+          <NavRow icon={<IUpload />} iconBg="var(--teal)" title="Restore from Backup" onClick={async () => { if (await requestUnlock('Restoring needs your PIN (or a new one) to protect card details')) setPanel('import'); }} />
           <NavRow icon={<IWallet />} iconBg="var(--green)" title="Export Spends (CSV)" onClick={() => setPanel('csv')} />
         </Group>
 
@@ -80,7 +95,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
 
         <div className="group-f center" style={{ lineHeight: 1.5 }}>
           Stored only on this device, encrypted with AES-256-GCM. No accounts, no servers, no tracking.<br />
-          SpendVault 2.0 · {data.transactions.length} spends · {data.cards.length} cards · {data.giftCards.length} gift cards
+          SpendVault 3.0 · {data.transactions.length} spends · {data.cards.length} cards · {data.giftCards.length} gift cards
         </div>
       </div>
 
@@ -90,6 +105,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
       {panel === 'import' && <ImportPanel onClose={() => setPanel(null)} />}
       {panel === 'csv' && <CsvPanel onClose={() => setPanel(null)} />}
       {panel === 'wipe' && <WipePanel onClose={() => setPanel(null)} />}
+      {panel === 'rules' && <RulesSheet onClose={() => setPanel(null)} />}
       <BudgetsSheet open={budgets} onClose={() => setBudgets(false)} />
     </Sheet>
   );
@@ -97,73 +113,43 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
 
 function BioPanel({ onClose }: { onClose: () => void }) {
   const { refreshMeta } = useStore();
-  const [code, setCode] = useState('');
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
   return (
-    <Sheet open onClose={onClose} title="Enable biometrics">
-      <form className="stack" onSubmit={async (e) => {
-        e.preventDefault();
-        setBusy(true);
-        setErr('');
+    <Sheet open onClose={onClose} title="">
+      <PinPad title="Enter your PIN" subtitle="Then approve the Face ID / Touch ID prompt" onComplete={async (pin) => {
         try {
-          await V.enableBiometric(code);
+          await V.enableBiometric(pin);
           await refreshMeta();
-          toast('Biometric unlock enabled');
+          toast('Face ID / Touch ID turned on');
           onClose();
+          return null;
         } catch (e) {
           const m = e instanceof Error ? e.message : String(e);
-          setErr(m === 'PRF_UNSUPPORTED'
-            ? 'This browser/device can’t derive an encryption key from biometrics (WebAuthn PRF). Try Safari 18+ on iOS/macOS or Chrome on Android/Windows/Mac.'
-            : /NotAllowed/i.test(m) ? 'Biometric prompt was cancelled.' : m);
-        } finally {
-          setBusy(false);
+          if (m === 'PRF_UNSUPPORTED') return 'This browser can’t use biometrics for encryption. Try Safari 18+ or Chrome.';
+          if (/NotAllowed/i.test(m)) return 'Face ID / Touch ID was cancelled';
+          return m;
         }
-      }}>
-        <p className="small muted" style={{ margin: 0 }}>Confirm your passcode, then approve the Face ID / fingerprint prompt. Your device will hold a key that can unlock the vault.</p>
-        <input className="input" type="password" autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="Current passcode" aria-label="Current passcode" autoComplete="current-password" />
-        {err && <div className="err">{err}</div>}
-        <button className="btn primary block" disabled={!code || busy}><IFace /> {busy ? 'Waiting…' : 'Continue'}</button>
-      </form>
+      }} />
     </Sheet>
   );
 }
 
 function PasscodePanel({ onClose }: { onClose: () => void }) {
   const { refreshMeta } = useStore();
+  const [stage, setStage] = useState<'cur' | 'new' | 'confirm'>('cur');
   const [cur, setCur] = useState('');
-  const [kind, setKind] = useState<V.PasscodeKind>('password');
   const [next, setNext] = useState('');
-  const [conf, setConf] = useState('');
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
   return (
-    <Sheet open onClose={onClose} title="Change passcode">
-      <form className="stack" onSubmit={async (e) => {
-        e.preventDefault();
-        setErr('');
-        if (kind === 'pin' && !/^\d{6}$/.test(next)) return setErr('PIN must be exactly 6 digits.');
-        if (kind === 'password' && next.length < 8) return setErr('Use at least 8 characters.');
-        if (next !== conf) return setErr('New passcodes don’t match.');
-        setBusy(true);
-        try {
-          await V.changePasscode(cur, next, kind);
-          await refreshMeta();
-          toast('Passcode changed');
-          onClose();
-        } catch (e) {
-          setErr(e instanceof Error ? e.message : 'Failed');
-        } finally {
-          setBusy(false);
-        }
-      }}>
-        <Field label="Current passcode"><input className="input" type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" /></Field>
-        <Segmented full value={kind} onChange={setKind} options={[{ value: 'password', label: 'Password' }, { value: 'pin', label: '6-digit PIN' }]} />
-        <Field label={kind === 'pin' ? 'New PIN' : 'New password'}><input className="input" type="password" inputMode={kind === 'pin' ? 'numeric' : 'text'} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" /></Field>
-        <Field label="Confirm"><input className="input" type="password" inputMode={kind === 'pin' ? 'numeric' : 'text'} value={conf} onChange={(e) => setConf(e.target.value)} autoComplete="new-password" /></Field>
-        {err && <div className="err">{err}</div>}
-        <button className="btn primary block" disabled={busy || !cur || !next}>{busy ? 'Re-encrypting…' : 'Change'}</button>
-      </form>
+    <Sheet open onClose={onClose} title="">
+      {stage === 'cur' && <PinPad key="c" title="Current PIN" onComplete={async (p) => { if (!(await V.verifyPasscode(p))) return 'Incorrect PIN'; setCur(p); setStage('new'); return null; }} />}
+      {stage === 'new' && <PinPad key="n" title="New PIN" onComplete={async (p) => { setNext(p); setStage('confirm'); return null; }} />}
+      {stage === 'confirm' && <PinPad key="f" title="Confirm new PIN" onComplete={async (p) => {
+        if (p !== next) { setStage('new'); return 'PINs didn’t match'; }
+        await V.changePasscode(cur, p, 'pin');
+        await refreshMeta();
+        toast('PIN changed');
+        onClose();
+        return null;
+      }} />}
     </Sheet>
   );
 }
@@ -268,11 +254,3 @@ function WipePanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="stack" style={{ gap: 6 }}>
-      <span className="foot muted" style={{ paddingLeft: 4 }}>{label}</span>
-      {children}
-    </label>
-  );
-}
