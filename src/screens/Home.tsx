@@ -9,7 +9,7 @@ import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
 import { ICalendar, IChecklist, IChevron, IFace, IPie, ISettings } from '../components/Icons';
-import { CBtn, NavRow } from '../components/ui';
+import { CBtn, NavRow, AddFab } from '../components/ui';
 import { QuickAdd, TodoEditor, TodoRow, TodoSheet, sortTodos } from '../components/Todos';
 import type { Todo } from '../lib/types';
 
@@ -124,6 +124,7 @@ export function Home() {
 
   return (
     <div className="screen">
+      <AddFab label="Add spend" onClick={() => nav.newSpend()} />
       <div className="wash" style={{ ['--wash' as string]: '#c9dcff' }} />
       <header className="topbar" style={{ minHeight: 44, margin: '0 0 6px' }}>
         <span />

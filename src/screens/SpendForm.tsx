@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import type { SpendDraft } from '../lib/nav';
 import type { GiftCardUse, PaymentType, Transaction } from '../lib/types';
 import { CATEGORIES } from '../lib/categories';
 import { money, prettyDate, round2, todayISO } from '../lib/format';
-import { categoryForMcc, lookupMcc } from '../lib/mcc';
-import { DeleteRow, FieldRow, Group, Sheet, Tile, Toggle, toast, SaveBtn } from '../components/ui';
+import { categoryForMcc } from '../lib/mcc';
+import { CBtn, FieldRow, Group, NavRow, Sheet, Toggle, toast } from '../components/ui';
 import { PAYMENT_LABELS } from '../components/TxnRow';
 import { LogoTile } from './GiftCards';
 import { CatIcon, categoryColor } from '../components/CatIcon';
 import { cardFinishKey, finishFor } from '../lib/finishes';
-import { IBank, ICalendar, ICard, IEdit, IEllipsis, IGift, INote, IScan, IStore, IWallet } from '../components/Icons';
+import { IBank, ICalendar, ICard, ICheck, IEdit, IEllipsis, IGift, IScan, IStore, ITrash, IWallet } from '../components/Icons';
 
 
 function currencySymbol(c: string) {
@@ -73,7 +73,7 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
 
   const save = async () => {
     setError('');
-    if (!(amt > 0)) return setError('Enter an amount.');
+    if (!(amt > 0)) { setError('Enter an amount'); return toast('Enter an amount'); }
     if (ptype === 'card' && !cardId) return setError('Choose a card, or add one in the Cards tab.');
     for (const u of giftUses) {
       const opt = giftOptions.find((o) => o.g.id === u.giftCardId);
@@ -96,111 +96,178 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
     onClose();
   };
 
-  const merchant = merchants.find((m) => m.id === merchantId);
-  const mccInfo = merchant?.mcc ? lookupMcc(merchant.mcc) : null;
-  const fmt = (n: number) => money(n, settings.currency);
 
   const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return todayISO(d); })();
   const selCard = cards.find((c) => c.id === cardId);
-  const QUICK: PaymentType[] = ['card', 'upi', 'cash', 'netbanking'];
+  const merchant = merchants.find((m) => m.id === merchantId);
+  const fmt = (n: number) => money(n, settings.currency);
+  const [picker, setPicker] = useState<null | 'category' | 'pay' | 'date' | 'merchant' | 'gift' | 'note'>(null);
+  const [armDelete, setArmDelete] = useState(false);
   const payIcon: Record<string, React.ReactNode> = { card: <ICard />, upi: <IScan />, cash: <IWallet />, netbanking: <IBank />, wallet: <IWallet />, giftcard: <IGift />, other: <IEllipsis /> };
 
+  // ---- custom keypad ----
+  const press = useCallback((k: string) => {
+    setError('');
+    setAmount((cur) => {
+      if (k === 'del') return cur.slice(0, -1);
+      if (k === '.') return cur.includes('.') ? cur : (cur || '0') + '.';
+      if (cur.includes('.') && cur.split('.')[1].length >= 2) return cur;
+      if (cur.replace('.', '').length >= 9) return cur;
+      if (cur === '0') return k;
+      return cur + k;
+    });
+  }, []);
+  useEffect(() => {
+    if (picker) return;
+    const h = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (/^[0-9]$/.test(e.key)) press(e.key);
+      else if (e.key === '.' || e.key === ',') press('.');
+      else if (e.key === 'Backspace') press('del');
+      else if (e.key === 'Enter') save();
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
+
+  const display = amount ? Number(amount.split('.')[0] || 0).toLocaleString(settings.currency === 'INR' ? 'en-IN' : undefined) + (amount.includes('.') ? '.' + amount.split('.')[1] : '') : '0';
+  const dateLabel = date === todayISO() ? 'Today' : date === yesterday ? 'Yesterday' : prettyDate(date);
+  const payLabel = ptype === 'card' ? (selCard ? `${selCard.name || selCard.bank} ••${selCard.last4}` : 'Choose card') : PAYMENT_LABELS[ptype];
+
   return (
-    <Sheet open onClose={onClose} title={edit ? 'Edit Spend' : 'New Spend'} actions={<SaveBtn onClick={save} />}
-      footer={<button className="btn primary" onClick={save}>{edit ? 'Save Changes' : 'Add Spend'}{amt > 0 ? ` · ${fmt(amt)}` : ''}</button>}>
-      <div className="stack-lg">
-        <div className="amount-hero" style={{ ['--hc' as string]: categoryColor(category) }}>
-          <span className="ah-cat"><CatIcon name={category} size={26} round solid />{category}</span>
-          <div className="amount-entry">
-            <span>{currencySymbol(settings.currency)}</span>
-            <input inputMode="decimal" placeholder="0" style={{ width: `${Math.max(1, amount.length) * 0.62 + 0.3}em` }} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} aria-label="Amount" autoFocus={!edit} />
+    <Sheet open onClose={onClose} title={edit ? 'Edit Spend' : 'New Spend'}
+      actions={edit ? <CBtn icon={<ITrash />} label={armDelete ? 'Tap again to delete' : 'Delete'} variant="danger" onClick={async () => {
+        if (!armDelete) { setArmDelete(true); toast('Tap again to delete'); return; }
+        await deleteTransaction(edit.id); toast('Spend deleted'); onClose();
+      }} /> : undefined}>
+      <div className="entry">
+        <div className="entry-amount" style={{ ['--hc' as string]: categoryColor(category) }}>
+          <div className={`entry-num ${amount ? '' : 'empty'} ${error ? 'shake' : ''}`} aria-live="polite" aria-label={`Amount ${fmt(amt)}`}>
+            <span className="cur">{currencySymbol(settings.currency)}</span>{display}
           </div>
-          <div className="ah-sub">{description.trim() || 'What was it for?'} · {date === todayISO() ? 'Today' : date === yesterday ? 'Yesterday' : prettyDate(date)}</div>
+          <button className="entry-desc" onClick={() => setPicker('note')}>{description.trim() || 'Add description'}<IEdit width={14} /></button>
         </div>
 
-        <Group>
-          <FieldRow icon={<INote />} tile="#8e8e93" label="Description"><input placeholder="e.g. Dinner" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={120} /></FieldRow>
-          <label className="cell with-lead" style={{ ['--inset' as string]: '58px' }}>
-            <CatIcon name={category} size={30} solid />
-            <span className="lbl">Category</span>
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-            </select>
-          </label>
-          <FieldRow icon={<ICalendar />} tile="#ff3b30" label="Date"><input type="date" value={date} max="2100-12-31" onChange={(e) => setDate(e.target.value)} /></FieldRow>
-          {merchants.length > 0 && (
-            <FieldRow icon={<IStore />} tile="#ff9500" label="Merchant">
-              <select value={merchantId} onChange={(e) => pickMerchant(e.target.value)}>
-                <option value="">None</option>
-                {merchants.map((m) => <option key={m.id} value={m.id}>{m.name || m.vpa}</option>)}
-              </select>
-            </FieldRow>
-          )}
-        </Group>
-        <div className="choice-row" style={{ marginTop: -14 }}>
-          <button type="button" className={`cchip ${date === todayISO() ? 'on' : ''}`} onClick={() => setDate(todayISO())}>Today</button>
-          <button type="button" className={`cchip ${date === yesterday ? 'on' : ''}`} onClick={() => setDate(yesterday)}>Yesterday</button>
-          {merchant && <span className="cchip" style={{ boxShadow: 'none', background: 'transparent', color: 'var(--label-2)', fontSize: 13 }}>MCC {merchant.mcc || '—'}{mccInfo ? ` · ${mccInfo.desc}` : ''}</span>}
+        <div className="tags">
+          <button className="tagbtn" onClick={() => setPicker('category')}><CatIcon name={category} size={22} round solid />{category}</button>
+          <button className="tagbtn" onClick={() => setPicker('pay')}>
+            {ptype === 'card' && selCard ? <span className="mini-card" style={{ background: finishFor(cardFinishKey(selCard)).bg, width: 24, height: 16 }} /> : payIcon[ptype]}{payLabel}
+          </button>
+          <button className="tagbtn" onClick={() => setPicker('date')}><ICalendar />{dateLabel}</button>
+          {merchants.length > 0 && <button className={`tagbtn ${merchant ? '' : 'ghost'}`} onClick={() => setPicker('merchant')}><IStore />{merchant ? merchant.name || merchant.vpa : 'Merchant'}</button>}
+          {giftCards.some((g) => !g.archived && g.balance > 0) || useGift ? (
+            <button className={`tagbtn ${giftSum > 0 ? '' : 'ghost'}`} onClick={() => setPicker('gift')}><IGift />{giftSum > 0 ? `${fmt(giftSum)} gift card` : 'Gift card'}</button>
+          ) : null}
+          <button className={`tagbtn ${notes ? '' : 'ghost'}`} onClick={() => setPicker('note')}><IEdit />{notes ? 'Note' : 'Add note'}</button>
         </div>
 
-        <section>
-          <div className="form-h">Paid with</div>
-          <div className="choice-row">
-            {QUICK.map((m) => (
-              <button type="button" key={m} className={`cchip ${ptype === m ? 'on' : ''}`} onClick={() => setPtype(m)}>{payIcon[m]}{PAYMENT_LABELS[m]}</button>
-            ))}
-            <label className={`cchip ${QUICK.includes(ptype) ? '' : 'on'}`} style={{ position: 'relative' }}>
-              {payIcon[QUICK.includes(ptype) ? 'other' : ptype]}{QUICK.includes(ptype) ? 'More' : PAYMENT_LABELS[ptype]}
-              <select aria-label="Other payment methods" value={QUICK.includes(ptype) ? '' : ptype} onChange={(e) => { const v = e.target.value as PaymentType; if (!v) return; setPtype(v); if (v === 'giftcard') setUseGift(true); }} style={{ position: 'absolute', inset: 0, opacity: 0 }}>
-                <option value="">More…</option>
-                {(['wallet', 'giftcard', 'other'] as PaymentType[]).map((m) => <option key={m} value={m}>{PAYMENT_LABELS[m]}</option>)}
-              </select>
-            </label>
-          </div>
-          <div className="group">
-            {ptype === 'card' && (
-              <label className="cell with-lead" style={{ ['--inset' as string]: '58px' }}>
-                <span className="mini-card" style={{ background: selCard ? finishFor(cardFinishKey(selCard)).bg : 'var(--fill)', width: 30 }} />
-                <span className="lbl">Card</span>
-                {cards.length ? (
-                  <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
-                    {cards.map((c) => <option key={c.id} value={c.id}>{c.name || c.bank} ••{c.last4}</option>)}
-                  </select>
-                ) : <span className="v grow">Add one in Cards</span>}
-              </label>
-            )}
-            <div className="cell with-lead" style={{ ['--inset' as string]: '58px' }}>
-              <Tile icon={<IGift />} color="#ff2d55" />
-              <span className="grow">Use gift cards</span>
-              <Toggle on={useGift} onChange={setUseGift} label="Use gift cards" />
-            </div>
-            {useGift && giftOptions.length === 0 && <div className="cell st">No gift cards with balance.</div>}
-            {useGift && giftOptions.map(({ g, available }) => (
-              <div className="cell" key={g.id} style={{ ['--inset' as string]: '16px' }}>
-                <LogoTile brand={g.brand} size={30} />
-                <span className="grow">
-                  <div className="t ellipsis" style={{ fontSize: 15 }}>{g.brand}</div>
-                  <div className="st" style={{ fontSize: 13 }}>{fmt(available)} available</div>
-                </span>
-                <input inputMode="decimal" placeholder="0" style={{ maxWidth: 90 }} value={gifts[g.id] ?? ''} onChange={(e) => setGifts((s) => ({ ...s, [g.id]: e.target.value.replace(/[^\d.]/g, '') }))} aria-label={`Amount from ${g.brand}`} />
-                <button type="button" className="textbtn" style={{ fontSize: 15 }} onClick={() => fill(g.id)}>Max</button>
-              </div>
-            ))}
-          </div>
-          {useGift && giftSum > 0 && (
-            <div className="group-f">
-              {fmt(giftSum)} from gift cards · <b className={remainder < 0 ? 'bad' : ''}>{fmt(Math.max(0, remainder))}</b> {ptype === 'giftcard' ? 'remaining' : `charged to ${PAYMENT_LABELS[ptype].toLowerCase()}`}
-            </div>
-          )}
-        </section>
-
-        <Group>
-          <FieldRow icon={<IEdit />} tile="#5856d6" label="Notes"><input placeholder="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} /></FieldRow>
-        </Group>
-
-        {error && <div className="group-f bad" style={{ marginTop: -10 }}>{error}</div>}
-        {edit && <DeleteRow label="Delete spend" confirmLabel={edit.giftCards.length ? 'Delete and refund gift cards' : 'Delete spend'} onConfirm={async () => { await deleteTransaction(edit.id); toast('Spend deleted'); onClose(); }} />}
+        <div className="keypad-grid" role="group" aria-label="Number pad">
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'].map((k) => (
+            <button key={k} className="kp" onClick={() => press(k)} aria-label={k === 'del' ? 'Delete' : k === '.' ? 'Decimal point' : k}>
+              {k === 'del' ? '⌫' : k}
+            </button>
+          ))}
+        </div>
+        <button className="btn primary entry-save" onClick={save}><ICheck strokeWidth={2.6} width={20} /> {edit ? 'Save Changes' : 'Add Spend'}</button>
       </div>
+
+      {picker === 'category' && (
+        <Sheet open onClose={() => setPicker(null)} title="Category">
+          <div className="cat-grid">
+            {CATEGORIES.map((c) => (
+              <button key={c.name} className={`cat-pick ${category === c.name ? 'on' : ''}`} onClick={() => { setCategory(c.name); setPicker(null); }}>
+                <CatIcon name={c.name} size={44} solid={category === c.name} />
+                <span>{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
+
+      {picker === 'pay' && (
+        <Sheet open onClose={() => setPicker(null)} title="Paid with">
+          <div className="stack-lg">
+            {cards.length > 0 && (
+              <Group header="Cards">
+                {cards.map((c) => (
+                  <NavRow key={c.id} icon={<span className="mini-card" style={{ background: finishFor(cardFinishKey(c)).bg, width: 34, height: 22 }} />} iconBg="transparent"
+                    title={c.name || c.bank} subtitle={`${c.bank} · ••${c.last4}`} chevron={false}
+                    right={ptype === 'card' && cardId === c.id ? <ICheck style={{ color: 'var(--tint)' }} /> : undefined}
+                    onClick={() => { setPtype('card'); setCardId(c.id); setPicker(null); }} />
+                ))}
+              </Group>
+            )}
+            <Group header="Other">
+              {(['upi', 'cash', 'netbanking', 'wallet', 'giftcard', 'other'] as PaymentType[]).map((m) => (
+                <NavRow key={m} icon={payIcon[m]} iconBg="var(--tint)" title={PAYMENT_LABELS[m]} chevron={false}
+                  right={ptype === m ? <ICheck style={{ color: 'var(--tint)' }} /> : undefined}
+                  onClick={() => { setPtype(m); if (m === 'giftcard') { setUseGift(true); setPicker('gift'); } else setPicker(null); }} />
+              ))}
+            </Group>
+          </div>
+        </Sheet>
+      )}
+
+      {picker === 'date' && (
+        <Sheet open onClose={() => setPicker(null)} title="Date">
+          <div className="stack-lg">
+            <div className="choice-row" style={{ padding: '2px 0', margin: 0, flexWrap: 'wrap' }}>
+              {[0, 1, 2, 3].map((n) => {
+                const d = new Date(); d.setDate(d.getDate() - n); const iso = todayISO(d);
+                return <button key={n} className={`cchip ${date === iso ? 'on' : ''}`} onClick={() => { setDate(iso); setPicker(null); }}>{n === 0 ? 'Today' : n === 1 ? 'Yesterday' : d.toLocaleDateString(undefined, { weekday: 'long' })}</button>;
+              })}
+            </div>
+            <Group><FieldRow icon={<ICalendar />} tile="#ff3b30" label="Pick a date"><input type="date" value={date} max={todayISO()} onChange={(e) => e.target.value && setDate(e.target.value)} /></FieldRow></Group>
+          </div>
+        </Sheet>
+      )}
+
+      {picker === 'merchant' && (
+        <Sheet open onClose={() => setPicker(null)} title="Merchant">
+          <Group>
+            <NavRow title="None" chevron={false} right={!merchantId ? <ICheck style={{ color: 'var(--tint)' }} /> : undefined} onClick={() => { setMerchantId(''); setPicker(null); }} />
+            {merchants.map((m) => (
+              <NavRow key={m.id} title={m.name || m.vpa} subtitle={m.mcc ? `MCC ${m.mcc}` : m.vpa} chevron={false}
+                right={merchantId === m.id ? <ICheck style={{ color: 'var(--tint)' }} /> : undefined}
+                onClick={() => { pickMerchant(m.id); setPicker(null); }} />
+            ))}
+          </Group>
+        </Sheet>
+      )}
+
+      {picker === 'gift' && (
+        <Sheet open onClose={() => setPicker(null)} title="Gift cards" actions={<CBtn icon={<ICheck strokeWidth={2.6} />} label="Done" variant="primary" onClick={() => setPicker(null)} />}>
+          <div className="stack-lg">
+            <Group footer={giftSum > 0 ? `${fmt(giftSum)} from gift cards · ${fmt(Math.max(0, remainder))} ${ptype === 'giftcard' ? 'remaining' : `charged to ${PAYMENT_LABELS[ptype].toLowerCase()}`}` : 'Balances are deducted automatically.'}>
+              <div className="cell"><span className="grow">Use gift cards</span><Toggle on={useGift} onChange={setUseGift} label="Use gift cards" /></div>
+              {useGift && giftOptions.length === 0 && <div className="cell st">No gift cards with balance.</div>}
+              {useGift && giftOptions.map(({ g, available }) => (
+                <div className="cell" key={g.id}>
+                  <LogoTile brand={g.brand} size={30} />
+                  <span className="grow">
+                    <div className="t ellipsis" style={{ fontSize: 15 }}>{g.brand}</div>
+                    <div className="st" style={{ fontSize: 13 }}>{fmt(available)} available</div>
+                  </span>
+                  <input inputMode="decimal" placeholder="0" style={{ maxWidth: 90 }} value={gifts[g.id] ?? ''} onChange={(e) => setGifts((s) => ({ ...s, [g.id]: e.target.value.replace(/[^\d.]/g, '') }))} aria-label={`Amount from ${g.brand}`} />
+                  <button type="button" className="textbtn" style={{ fontSize: 15 }} onClick={() => fill(g.id)}>Max</button>
+                </div>
+              ))}
+            </Group>
+          </div>
+        </Sheet>
+      )}
+
+      {picker === 'note' && (
+        <Sheet open onClose={() => setPicker(null)} title="Details" actions={<CBtn icon={<ICheck strokeWidth={2.6} />} label="Done" variant="primary" onClick={() => setPicker(null)} />}>
+          <form onSubmit={(e) => { e.preventDefault(); setPicker(null); }}>
+            <Group>
+              <FieldRow icon={<IEdit />} tile="#8e8e93" label="Description"><input autoFocus placeholder="e.g. Dinner with friends" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={120} enterKeyHint="done" /></FieldRow>
+              <FieldRow icon={<IEdit />} tile="#5856d6" label="Note"><input placeholder="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} enterKeyHint="done" /></FieldRow>
+            </Group>
+            <button type="submit" hidden />
+          </form>
+        </Sheet>
+      )}
     </Sheet>
   );
 }

@@ -4,10 +4,10 @@ import type { CardKind, CardNetwork, PaymentCard, Transaction } from '../lib/typ
 import { FINISHES, cardFinishKey, finishFor, suggestFinish } from '../lib/finishes';
 import { cardLength, daysUntil, detectNetwork, digits, groupCardNumber, luhnValid, maskCardNumber, money, nextDayOfMonth, round2, todayISO } from '../lib/format';
 import { Logo, fileToDataUrl, hasLogo } from '../lib/logos';
-import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
+import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn, AddFab } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
-import { IAlert, IBank, IBell, ICalendar, ICard, ICopy, IEdit, IEye, IEyeOff, IHash, ILock, IPie, IPlus, ITag, IUser, IWallet } from '../components/Icons';
+import { IAlert, IBank, IBell, ICalendar, ICard, ICopy, IEdit, IEye, IEyeOff, IHash, ILock, IPie, ITag, IUser, IWallet } from '../components/Icons';
 import { VaultGate } from './Lock';
 
 const NETWORKS: CardNetwork[] = ['Visa', 'Mastercard', 'RuPay', 'Amex', 'Diners', 'Discover', 'Other'];
@@ -150,12 +150,12 @@ function CardsUnlocked({ onLock }: { onLock: () => void }) {
 
   return (
     <div className="screen">
+      <AddFab label="Add card" onClick={() => setForm({ open: true })} />
       <div className="wash" style={{ ['--wash' as string]: '#c4eedb' }} />
       <header className="topbar">
         <h1>Cards</h1>
         <div className="actions">
           <CBtn variant="glass" size="lg" icon={<ILock />} label="Lock cards" onClick={onLock} />
-          <CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add card" onClick={() => setForm({ open: true })} />
         </div>
       </header>
 

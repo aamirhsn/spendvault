@@ -177,3 +177,13 @@ export async function copyText(text: string, label = 'Copied') {
     toast('Copy failed');
   }
 }
+
+/** Floating “+” button that sits above the tab bar. */
+export function AddFab({ label, onClick }: { label: string; onClick: () => void }) {
+  return createPortal(
+    <button className="add-fab" onClick={onClick} aria-label={label} title={label}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+    </button>,
+    document.body,
+  );
+}

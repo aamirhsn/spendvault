@@ -4,8 +4,8 @@ import { useNav } from '../lib/nav';
 import { CATEGORIES } from '../lib/categories';
 import { addMonths, money, monthKey, monthLabel, prettyDate, todayISO } from '../lib/format';
 import { TxnRow, paymentLabel } from '../components/TxnRow';
-import { IBack, IChevron, IMessage, IPlus, ISearch } from '../components/Icons';
-import { Empty, CBtn } from '../components/ui';
+import { IBack, IChevron, IMessage, ISearch } from '../components/Icons';
+import { Empty, CBtn, AddFab } from '../components/ui';
 
 export function Spends() {
   const { data } = useStore();
@@ -37,10 +37,11 @@ export function Spends() {
 
   return (
     <div className="screen">
+      <AddFab label="Add spend" onClick={() => nav.newSpend()} />
       <div className="wash" style={{ ['--wash' as string]: '#ffdcc2' }} />
       <header className="topbar">
         <h1>Spends</h1>
-        <div className="actions"><CBtn variant="glass" size="lg" icon={<IMessage />} label="Add from messages" onClick={() => nav.openMessages()} /><CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add spend" onClick={() => nav.newSpend()} /></div>
+        <div className="actions"><CBtn variant="glass" size="lg" icon={<IMessage />} label="Add from messages" onClick={() => nav.openMessages()} /></div>
       </header>
 
       <div className="stack">

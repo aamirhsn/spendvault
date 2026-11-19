@@ -5,10 +5,10 @@ import type { GiftCard } from '../lib/types';
 import { GIFT_BRANDS, giftBackground, giftBrand } from '../lib/categories';
 import { daysUntil, money, parseISO, prettyDate, round2 } from '../lib/format';
 import { Logo, hasLogo } from '../lib/logos';
-import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
+import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, AddFab } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
-import { ICalendar, ICopy, IEdit, IEye, IEyeOff, IHash, ILock, IPie, IPlus, ITag, IWallet } from '../components/Icons';
+import { ICalendar, ICopy, IEdit, IEye, IEyeOff, IHash, ILock, IPie, ITag, IWallet } from '../components/Icons';
 
 type Filter = 'active' | 'used' | 'archived';
 
@@ -71,11 +71,11 @@ export function GiftCards() {
 
   return (
     <div className="screen">
+      <AddFab label="Add gift card" onClick={() => setForm({ open: true })} />
       <div className="wash" style={{ ['--wash' as string]: '#ffd3e2' }} />
       <header className="topbar">
         <h1>Gift Cards</h1>
         <div className="actions">
-          <CBtn variant="glass" size="lg" icon={<IPlus strokeWidth={2.4} />} label="Add gift card" onClick={() => setForm({ open: true })} />
         </div>
       </header>
 
