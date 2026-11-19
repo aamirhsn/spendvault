@@ -60,3 +60,4 @@ export const IClipboard = base(<><rect x="5" y="4" width="14" height="17" rx="2"
 export const IWand = base(<><path d="M4 20 15 9M14 4v2M19 9h2M17.5 5.5 19 4M17.5 12.5 19 14M10 5.5 8.5 4" /></>);
 export const IRule = base(<><path d="M4 6h10M4 12h7M4 18h10" /><path d="M17 4v16M14 17l3 3 3-3" /></>);
 export const IChecklist = base(<><path d="M10 6h10M10 12h10M10 18h10" /><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17" /></>);
+export const IBank = base(<><path d="M3 9.5 12 4l9 5.5M4 20h16M6 10v7M10 10v7M14 10v7M18 10v7" /></>);

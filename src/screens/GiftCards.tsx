@@ -8,7 +8,7 @@ import { Logo, hasLogo } from '../lib/logos';
 import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
-import { ICopy, IEye, IEyeOff, ILock, IPlus } from '../components/Icons';
+import { ICalendar, ICopy, IEdit, IEye, IEyeOff, IHash, ILock, IPie, IPlus, ITag, IWallet } from '../components/Icons';
 
 type Filter = 'active' | 'used' | 'archived';
 
@@ -204,29 +204,29 @@ function GiftForm({ edit, onClose }: { edit?: GiftCard; onClose: () => void }) {
   };
 
   return (
-    <Sheet open onClose={onClose} title={edit ? 'Edit Gift Card' : 'New Gift Card'} actions={<SaveBtn onClick={save} />}>
+    <Sheet open onClose={onClose} title={edit ? 'Edit Gift Card' : 'New Gift Card'} actions={<SaveBtn onClick={save} />} footer={<button className="btn primary" onClick={save}>{edit ? 'Save Changes' : 'Add Gift Card'}</button>}>
       <div className="stack-lg">
         <Group>
-          <FieldRow label="Brand">
+          <FieldRow icon={<ITag />} tile="#ff2d55" label="Brand">
             <select value={brand} onChange={(e) => setBrand(e.target.value)}>
               {GIFT_BRANDS.map((b) => <option key={b.name}>{b.name}</option>)}
             </select>
           </FieldRow>
-          {brand === 'Other' && <FieldRow label="Brand name"><input placeholder="Required" value={custom} onChange={(e) => setCustom(e.target.value)} /></FieldRow>}
+          {brand === 'Other' && <FieldRow icon={<IEdit />} tile="#ff2d55" label="Brand name"><input placeholder="Required" value={custom} onChange={(e) => setCustom(e.target.value)} /></FieldRow>}
           {name && <LogoPicker name={name} label="Logo" />}
         </Group>
         <Group footer="Codes and PINs are kept in your PIN-protected vault.">
           {edit && vault !== 'unlocked' && <button className="cell tint" onClick={() => requestUnlock('Unlock to view or change the code')}><ILock width={17} /> Unlock to edit code & PIN</button>}
-          <FieldRow label="Card / code"><input className="mono" autoComplete="off" spellCheck={false} placeholder="Required" value={code} onChange={(e) => setCode(e.target.value)} /></FieldRow>
-          <FieldRow label="PIN"><input className="mono" autoComplete="off" spellCheck={false} placeholder="Optional" value={pin} onChange={(e) => setPin(e.target.value)} /></FieldRow>
+          <FieldRow icon={<IHash />} tile="#5856d6" label="Card / code"><input className="mono" autoComplete="off" spellCheck={false} placeholder="Required" value={code} onChange={(e) => setCode(e.target.value)} /></FieldRow>
+          <FieldRow icon={<ILock />} tile="#8e8e93" label="PIN"><input className="mono" autoComplete="off" spellCheck={false} placeholder="Optional" value={pin} onChange={(e) => setPin(e.target.value)} /></FieldRow>
         </Group>
         <Group footer={edit ? 'Balance updates automatically when you log spends with this card.' : undefined}>
-          <FieldRow label={`Value (${data.settings.currency})`}><input inputMode="decimal" placeholder="0" value={value} onChange={(e) => setValue(clean(e.target.value))} /></FieldRow>
-          <FieldRow label="Balance"><input inputMode="decimal" placeholder={value || 'Same as value'} value={balance} onChange={(e) => setBalance(clean(e.target.value))} /></FieldRow>
-          <FieldRow label="Expires"><input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} /></FieldRow>
+          <FieldRow icon={<IWallet />} tile="#34c759" label={`Value (${data.settings.currency})`}><input inputMode="decimal" placeholder="0" value={value} onChange={(e) => setValue(clean(e.target.value))} /></FieldRow>
+          <FieldRow icon={<IPie />} tile="#30b0c7" label="Balance"><input inputMode="decimal" placeholder={value || 'Same as value'} value={balance} onChange={(e) => setBalance(clean(e.target.value))} /></FieldRow>
+          <FieldRow icon={<ICalendar />} tile="#ff3b30" label="Expires"><input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} /></FieldRow>
         </Group>
-        <Group header="Notes">
-          <div className="cell"><textarea placeholder="Where it came from, terms…" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+        <Group>
+          <FieldRow icon={<IEdit />} tile="#5856d6" label="Notes"><input placeholder="Where it came from, terms…" value={notes} onChange={(e) => setNotes(e.target.value)} /></FieldRow>
         </Group>
         {err && <div className="group-f bad" style={{ marginTop: -10 }}>{err}</div>}
       </div>

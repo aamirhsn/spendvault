@@ -514,3 +514,28 @@ button.cell:active, a.cell:active { background: var(--fill); }
 :root[data-theme='dark'] .todo-head .link { color: #ffb340; }
 .todo-card .todo-check.on { background: #ff9500; border-color: #ff9500; }
 .todo-card .todo-check.add { color: #ff8a00; border-color: rgba(255, 138, 0, .6); }
+
+/* ---------- modern form pieces ---------- */
+.tile { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; flex: none; }
+.tile svg { width: 17px; height: 17px; }
+.sheet-foot { padding: 10px 16px calc(var(--safe-b) + 12px); border-top: .5px solid var(--sep); background: color-mix(in srgb, var(--bg) 92%, transparent); }
+:root[data-theme='dark'] .sheet-foot { background: rgba(28,28,30,.92); }
+.sheet-foot .btn { width: 100%; height: 52px; font-size: 17px; }
+.sheet:has(.sheet-foot) .sheet-body { padding-bottom: 16px; }
+
+/* amount hero: tinted by category */
+.amount-hero { border-radius: 24px; padding: 16px 16px 18px; text-align: center; position: relative; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--hc) 22%, var(--card)), color-mix(in srgb, var(--hc) 8%, var(--card))); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--hc) 30%, transparent); }
+.amount-hero .ah-cat { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 99px; background: color-mix(in srgb, var(--card) 70%, transparent); font-size: 14px; font-weight: 600; }
+.amount-hero .ah-sub { font-size: 13px; color: var(--label-2); margin-top: 2px; }
+.amount-hero .amount-entry { padding: 8px 0 2px; }
+
+/* one-tap choice chips */
+.choice-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 16px 12px; margin: 0 -16px; }
+.choice-row::-webkit-scrollbar { display: none; }
+.cchip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 99px; font-size: 15px; font-weight: 500; background: var(--card); color: var(--label); box-shadow: inset 0 0 0 .5px var(--sep); transition: background .2s, color .2s, transform .2s var(--spring); }
+.cchip svg { width: 16px; height: 16px; }
+.cchip.on { background: var(--tint); color: #fff; box-shadow: 0 3px 10px color-mix(in srgb, var(--tint) 35%, transparent); }
+.cchip:active { transform: scale(.94); }
+.mini-card { width: 30px; height: 20px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.2); }
+.form-h { font-size: 13px; font-weight: 600; color: var(--label-2); text-transform: uppercase; letter-spacing: .04em; margin: 2px 4px 8px; }

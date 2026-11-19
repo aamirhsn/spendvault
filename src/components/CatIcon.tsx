@@ -23,15 +23,15 @@ const GLYPHS: Record<string, { color: string; g: ReactNode }> = {
 
 export const categoryColor = (name: string) => (GLYPHS[name] ?? GLYPHS.Other).color;
 
-export function CatIcon({ name, size = 40, round }: { name: string; size?: number; round?: boolean }) {
+export function CatIcon({ name, size = 40, round, solid }: { name: string; size?: number; round?: boolean; solid?: boolean }) {
   const { color, g } = GLYPHS[name] ?? GLYPHS.Other;
   return (
     <span
       className="cat-ic"
       style={{
         width: size, height: size, borderRadius: round ? '50%' : size * 0.3,
-        background: `color-mix(in srgb, ${color} 15%, var(--card))`, color,
-        boxShadow: `inset 0 0 0 0.5px color-mix(in srgb, ${color} 25%, transparent)`,
+        background: solid ? color : `color-mix(in srgb, ${color} 15%, var(--card))`, color: solid ? '#fff' : color,
+        boxShadow: solid ? 'none' : `inset 0 0 0 0.5px color-mix(in srgb, ${color} 25%, transparent)`,
       }}
     >
       <svg viewBox="0 0 24 24" width={size * 0.52} height={size * 0.52} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{g}</svg>

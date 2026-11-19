@@ -5,13 +5,20 @@ import { ICheck, IChevron, IClose, IEdit } from './Icons';
 // Page scroll lock shared by all open sheets. A counter (not save/restore of the previous
 // value) so sheets closing in any order can never leave the page stuck unscrollable.
 let locks = 0;
+let savedY = 0;
 function lockScroll() {
+  if (locks === 0) savedY = window.scrollY;
   locks += 1;
   document.documentElement.style.overflow = 'hidden';
 }
 function unlockScroll() {
   locks = Math.max(0, locks - 1);
-  if (locks === 0) document.documentElement.style.overflow = '';
+  if (locks === 0) {
+    document.documentElement.style.overflow = '';
+    // iOS leaves the layout viewport shifted after the keyboard closes, stranding fixed
+    // elements (the tab bar) mid-screen. Restoring the scroll position re-syncs it.
+    requestAnimationFrame(() => window.scrollTo(0, savedY));
+  }
 }
 
 /** Round toolbar button with a symbol (iOS 26 style). */
@@ -26,7 +33,7 @@ export const SaveBtn = ({ onClick, label = 'Save' }: { onClick: () => void; labe
 export const EditBtn = ({ onClick }: { onClick: () => void }) => <CBtn icon={<IEdit />} label="Edit" variant="tinted" onClick={onClick} />;
 
 /** Modal sheet: ✕ on the left, title centre, actions (✓ / ✎) on the right. */
-export function Sheet({ open, onClose, title, children, actions }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; actions?: ReactNode; cancelLabel?: string }) {
+export function Sheet({ open, onClose, title, children, actions, footer }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; actions?: ReactNode; cancelLabel?: string; footer?: ReactNode }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -48,6 +55,7 @@ export function Sheet({ open, onClose, title, children, actions }: { open: boole
           <div className="r row" style={{ gap: 8 }}>{actions}</div>
         </div>
         <div className="sheet-body">{children}</div>
+        {footer && <div className="sheet-foot">{footer}</div>}
       </div>
     </>,
     document.body,
@@ -66,10 +74,13 @@ export function Group({ header, footer, children, style }: { header?: ReactNode;
 }
 
 /** Label-left / control-right form row. */
-export function FieldRow({ label, children, icon }: { label: string; children: ReactNode; icon?: ReactNode }) {
+/** Coloured rounded-square icon, like iOS Settings rows. */
+export const Tile = ({ icon, color }: { icon: ReactNode; color: string }) => <span className="tile" style={{ background: color }}>{icon}</span>;
+
+export function FieldRow({ label, children, icon, tile }: { label: string; children: ReactNode; icon?: ReactNode; tile?: string }) {
   return (
-    <label className={`cell ${icon ? 'with-lead' : ''}`} style={icon ? { ['--inset' as string]: '50px' } : undefined}>
-      {icon && <span className="lead">{icon}</span>}
+    <label className={`cell ${icon ? 'with-lead' : ''}`} style={icon ? { ['--inset' as string]: tile ? '58px' : '50px' } : undefined}>
+      {icon && (tile ? <Tile icon={icon} color={tile} /> : <span className="lead">{icon}</span>)}
       <span className="lbl">{label}</span>
       {children}
     </label>

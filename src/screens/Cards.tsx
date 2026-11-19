@@ -7,7 +7,7 @@ import { Logo, fileToDataUrl, hasLogo } from '../lib/logos';
 import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, CBtn } from '../components/ui';
 import { useVerify } from '../components/Verify';
 import { LogoPicker } from '../components/LogoPicker';
-import { ICopy, IEye, IEyeOff, ILock, IPlus } from '../components/Icons';
+import { IAlert, IBank, IBell, ICalendar, ICard, ICopy, IEdit, IEye, IEyeOff, IHash, ILock, IPie, IPlus, ITag, IUser, IWallet } from '../components/Icons';
 import { VaultGate } from './Lock';
 
 const NETWORKS: CardNetwork[] = ['Visa', 'Mastercard', 'RuPay', 'Amex', 'Diners', 'Discover', 'Other'];
@@ -314,9 +314,9 @@ function DuesSheet({ c, onClose }: { c: PaymentCard; onClose: () => void }) {
   return (
     <Sheet open onClose={onClose} title="Update dues" actions={<SaveBtn onClick={save} />}>
       <Group footer="Overdue is anything unpaid from previous statements.">
-        <FieldRow label="Total due"><input inputMode="decimal" placeholder="0" value={total} onChange={(e) => setTotal(clean(e.target.value))} /></FieldRow>
-        <FieldRow label="Minimum due"><input inputMode="decimal" placeholder="0" value={min} onChange={(e) => setMin(clean(e.target.value))} /></FieldRow>
-        <FieldRow label="Overdue"><input inputMode="decimal" placeholder="0" value={over} onChange={(e) => setOver(clean(e.target.value))} /></FieldRow>
+        <FieldRow icon={<IWallet />} tile="#007aff" label="Total due"><input inputMode="decimal" placeholder="0" value={total} onChange={(e) => setTotal(clean(e.target.value))} /></FieldRow>
+        <FieldRow icon={<IWallet />} tile="#30b0c7" label="Minimum due"><input inputMode="decimal" placeholder="0" value={min} onChange={(e) => setMin(clean(e.target.value))} /></FieldRow>
+        <FieldRow icon={<IAlert />} tile="#ff3b30" label="Overdue"><input inputMode="decimal" placeholder="0" value={over} onChange={(e) => setOver(clean(e.target.value))} /></FieldRow>
       </Group>
     </Sheet>
   );
@@ -392,14 +392,14 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
   };
 
   return (
-    <Sheet open onClose={onClose} title={edit ? 'Edit Card' : 'New Card'} actions={<SaveBtn onClick={save} />}>
+    <Sheet open onClose={onClose} title={edit ? 'Edit Card' : 'New Card'} actions={<SaveBtn onClick={save} />} footer={<button className="btn primary" onClick={save}>{edit ? 'Save Changes' : 'Add Card'}</button>}>
       <form className="stack-lg" autoComplete="off" onSubmit={(e) => { e.preventDefault(); save(); }}>
         <Segmented full value={kind} onChange={setKind} options={[{ value: 'credit', label: 'Credit' }, { value: 'debit', label: 'Debit' }]} />
 
         <Group>
-          <FieldRow label="Bank"><input placeholder="HDFC Bank" value={bank} onChange={(e) => { setBank(e.target.value); autoFinish(e.target.value, name); }} /></FieldRow>
-          <FieldRow label="Card name"><input placeholder="Infinia" value={name} onChange={(e) => { setName(e.target.value); autoFinish(bank, e.target.value); }} /></FieldRow>
-          <FieldRow label="Network">
+          <FieldRow icon={<IBank />} tile="#007aff" label="Bank"><input placeholder="HDFC Bank" value={bank} onChange={(e) => { setBank(e.target.value); autoFinish(e.target.value, name); }} /></FieldRow>
+          <FieldRow icon={<ITag />} tile="#5856d6" label="Card name"><input placeholder="Infinia" value={name} onChange={(e) => { setName(e.target.value); autoFinish(bank, e.target.value); }} /></FieldRow>
+          <FieldRow icon={<ICard />} tile="#30b0c7" label="Network">
             <select value={network} onChange={(e) => setNetwork(e.target.value as CardNetwork)}>
               {NETWORKS.map((n) => <option key={n}>{n}</option>)}
             </select>
@@ -407,10 +407,10 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
         </Group>
 
         <Group footer={luhnWarn ? <span className="bad">This number fails the checksum — please double-check it.</span> : 'Stored encrypted on this device. Only the last 4 digits show until you verify.'}>
-          <FieldRow label="Card number"><input className="mono" inputMode="numeric" placeholder="Required" value={number} onChange={(e) => onNumber(e.target.value)} /></FieldRow>
-          <FieldRow label="Expiry"><input className="mono" inputMode="numeric" placeholder="MM/YY" value={expiry} onChange={(e) => onExpiry(e.target.value)} /></FieldRow>
-          <FieldRow label="CVV"><input className="mono" type="password" inputMode="numeric" placeholder="Optional" maxLength={4} value={cvv} onChange={(e) => setCvv(digits(e.target.value).slice(0, 4))} /></FieldRow>
-          <FieldRow label="Name on card"><input placeholder="Optional" value={holder} onChange={(e) => setHolder(e.target.value)} /></FieldRow>
+          <FieldRow icon={<IHash />} tile="#af52de" label="Card number"><input className="mono" inputMode="numeric" placeholder="Required" value={number} onChange={(e) => onNumber(e.target.value)} /></FieldRow>
+          <FieldRow icon={<ICalendar />} tile="#ff3b30" label="Expiry"><input className="mono" inputMode="numeric" placeholder="MM/YY" value={expiry} onChange={(e) => onExpiry(e.target.value)} /></FieldRow>
+          <FieldRow icon={<ILock />} tile="#8e8e93" label="CVV"><input className="mono" type="password" inputMode="numeric" placeholder="Optional" maxLength={4} value={cvv} onChange={(e) => setCvv(digits(e.target.value).slice(0, 4))} /></FieldRow>
+          <FieldRow icon={<IUser />} tile="#ff9500" label="Name on card"><input placeholder="Optional" value={holder} onChange={(e) => setHolder(e.target.value)} /></FieldRow>
         </Group>
 
         <Group header="Appearance" footer={art ? 'Using your photo as the card face.' : 'Pick the finish closest to your card, or use a photo of it.'}>
@@ -435,17 +435,17 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
 
         {kind === 'credit' && (
           <Group header="Billing">
-            <FieldRow label="Credit limit"><input inputMode="decimal" placeholder="Optional" value={limit} onChange={(e) => setLimit(clean(e.target.value))} /></FieldRow>
-            <FieldRow label="Statement day"><input inputMode="numeric" placeholder="1–31" value={stmt} onChange={(e) => setStmt(digits(e.target.value).slice(0, 2))} /></FieldRow>
-            <FieldRow label="Due day"><input inputMode="numeric" placeholder="1–31" value={dueDay} onChange={(e) => setDueDay(digits(e.target.value).slice(0, 2))} /></FieldRow>
-            <FieldRow label="Total due"><input inputMode="decimal" placeholder="0" value={totalDue} onChange={(e) => setTotalDue(clean(e.target.value))} /></FieldRow>
-            <FieldRow label="Minimum due"><input inputMode="decimal" placeholder="0" value={minDue} onChange={(e) => setMinDue(clean(e.target.value))} /></FieldRow>
-            <FieldRow label="Overdue"><input inputMode="decimal" placeholder="0" value={overdue} onChange={(e) => setOverdue(clean(e.target.value))} /></FieldRow>
+            <FieldRow icon={<IPie />} tile="#34c759" label="Credit limit"><input inputMode="decimal" placeholder="Optional" value={limit} onChange={(e) => setLimit(clean(e.target.value))} /></FieldRow>
+            <FieldRow icon={<ICalendar />} tile="#ff9500" label="Statement day"><input inputMode="numeric" placeholder="1–31" value={stmt} onChange={(e) => setStmt(digits(e.target.value).slice(0, 2))} /></FieldRow>
+            <FieldRow icon={<IBell />} tile="#ff3b30" label="Due day"><input inputMode="numeric" placeholder="1–31" value={dueDay} onChange={(e) => setDueDay(digits(e.target.value).slice(0, 2))} /></FieldRow>
+            <FieldRow icon={<IWallet />} tile="#007aff" label="Total due"><input inputMode="decimal" placeholder="0" value={totalDue} onChange={(e) => setTotalDue(clean(e.target.value))} /></FieldRow>
+            <FieldRow icon={<IWallet />} tile="#30b0c7" label="Minimum due"><input inputMode="decimal" placeholder="0" value={minDue} onChange={(e) => setMinDue(clean(e.target.value))} /></FieldRow>
+            <FieldRow icon={<IAlert />} tile="#ff3b30" label="Overdue"><input inputMode="decimal" placeholder="0" value={overdue} onChange={(e) => setOverdue(clean(e.target.value))} /></FieldRow>
           </Group>
         )}
 
-        <Group header="Notes">
-          <div className="cell"><textarea placeholder="Reward rate, fee waiver target…" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+        <Group>
+          <FieldRow icon={<IEdit />} tile="#5856d6" label="Notes"><input placeholder="Reward rate, fee waiver…" value={notes} onChange={(e) => setNotes(e.target.value)} /></FieldRow>
         </Group>
         {err && <div className="group-f bad" style={{ marginTop: -10 }}>{err}</div>}
         <button type="submit" hidden />
