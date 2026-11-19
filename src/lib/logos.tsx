@@ -4,69 +4,82 @@ import {
 } from 'simple-icons';
 import { useStore } from './store';
 
-// Brand marks from Simple Icons (CC0). Brands not in that set fall back to a typeset
-// wordmark, and any brand can be given a user-uploaded logo (stored encrypted in the vault).
-type Icon = { path: string; title: string };
+// Logo sources, in priority order:
+//   1. the user's own upload (stored encrypted in the vault)
+//   2. bundled public-domain / CC0 logo files from Wikimedia Commons (public/logos, see CREDITS.md)
+//   3. Simple Icons (CC0) brand marks
+//   4. a typeset wordmark (rendered by the caller)
 
+import { LOGO_FILES, BOXED } from './logoFiles';
+export { LOGO_FILES };
+
+type Icon = { path: string; title: string; hex: string };
 const ICONS: Record<string, Icon> = {
-  visa: siVisa, mastercard: siMastercard, amex: siAmericanexpress, americanexpress: siAmericanexpress,
-  diners: siDinersclub, dinersclub: siDinersclub, discover: siDiscover,
-  hdfc: siHdfcbank, hdfcbank: siHdfcbank, icici: siIcicibank, icicibank: siIcicibank, axis: siAxisbank, axisbank: siAxisbank,
-  hsbc: siHsbc, swiggy: siSwiggy, zomato: siZomato, bigbasket: siBigbasket, uber: siUber, bookmyshow: siBookmyshow,
-  apple: siApple, googleplay: siGoogleplay, starbucks: siStarbucks, paytm: siPaytm, phonepe: siPhonepe,
+  visa: siVisa, mastercard: siMastercard, amex: siAmericanexpress, diners: siDinersclub, discover: siDiscover,
+  hdfc: siHdfcbank, icici: siIcicibank, axis: siAxisbank, hsbc: siHsbc, swiggy: siSwiggy, zomato: siZomato,
+  bigbasket: siBigbasket, uber: siUber, bookmyshow: siBookmyshow, apple: siApple, googleplay: siGoogleplay,
+  starbucks: siStarbucks, paytm: siPaytm, phonepe: siPhonepe,
+};
+
+const ALIASES: Record<string, string> = {
+  americanexpress: 'amex', dinersclub: 'diners', statebankofindia: 'sbi', statebank: 'sbi', hdfcbank: 'hdfc', icicibank: 'icici',
+  axisbank: 'axis', yesbank: 'yes', indusindbank: 'indusind', idfcfirstbank: 'idfcfirst', idfc: 'idfcfirst', idfcbank: 'idfcfirst',
+  aubank: 'au', ausmallfinancebank: 'au', ausmallfinance: 'au', standardcharteredbank: 'standardchartered', scb: 'standardchartered',
+  federalbank: 'federal', hsbcbank: 'hsbc', tatacliq: 'tatacliq', tataneuhdfc: 'tataneu', amazonpayicici: 'amazonpay',
+  google: 'googleplay', googleplaystore: 'googleplay', mmt: 'makemytrip', shoppers: 'shoppersstop',
 };
 
 /** Normalise a brand / bank name to a lookup key: "HDFC Bank" → "hdfc", "Google Play" → "googleplay". */
 export function logoKey(name: string) {
-  const k = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return k.replace(/(bank|bankltd|limited|ltd|card|cards)$/g, '') || k;
+  const raw = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (ALIASES[raw]) return ALIASES[raw];
+  if (LOGO_FILES[raw] || ICONS[raw]) return raw;
+  const stripped = raw.replace(/(bank|bankltd|limited|ltd|card|cards|giftcard|voucher)$/g, '');
+  return ALIASES[stripped] ?? stripped;
 }
 
-export const hasBuiltInLogo = (name: string) => !!(ICONS[logoKey(name)] ?? ICONS[name.toLowerCase().replace(/[^a-z0-9]/g, '')]);
+export const hasLogo = (name: string, custom?: Record<string, string>) => {
+  const k = logoKey(name);
+  return !!(custom?.[k] || LOGO_FILES[k] || ICONS[k]);
+};
 
-export function BrandLogo({ name, height = 22, color = '#fff', fallback = true, className }: { name: string; height?: number; color?: string; fallback?: boolean; className?: string }) {
+const base = import.meta.env.BASE_URL;
+
+/**
+ * Brand logo. `tone` = 'color' (original colours), 'white' or 'dark' (single-colour for card metal).
+ * Returns null when no logo is known so the caller can render its own fallback.
+ */
+export function Logo({ name, tone = 'color', className, style, alt }: { name: string; tone?: 'color' | 'white' | 'dark'; className?: string; style?: React.CSSProperties; alt?: string }) {
   const { data } = useStore();
   const key = logoKey(name);
+  const toneCls = tone === 'white' ? 'white-logo' : tone === 'dark' ? 'dark-logo' : '';
   const custom = data.logos?.[key];
-  if (custom) return <img src={custom} alt={name} className={className} style={{ height, width: 'auto', maxWidth: height * 4, objectFit: 'contain', display: 'block' }} />;
-  const icon = ICONS[key] ?? ICONS[name.toLowerCase().replace(/[^a-z0-9]/g, '')];
-  if (icon)
+  const file = LOGO_FILES[key];
+  const icon = ICONS[key];
+  const img = (src: string, cls: string) => <img src={src} alt={alt ?? name} className={`${cls} ${className ?? ''}`} style={style} loading="lazy" decoding="async" draggable={false} />;
+  // Your own upload is always shown as-is.
+  if (custom) return img(custom, '');
+  // Official artwork: recoloured to a silhouette on card metal, unless it sits on its own background box.
+  if (file && (tone === 'color' || !BOXED.has(key))) return img(`${base}logos/${file}`, toneCls);
+  if (icon) {
+    const fill = tone === 'white' ? '#fff' : tone === 'dark' ? '#111' : `#${icon.hex}`;
     return (
-      <svg viewBox="0 0 24 24" height={height} width={height} fill={color} role="img" aria-label={icon.title} className={className} style={{ display: 'block', flex: 'none' }}>
+      <svg viewBox="0 0 24 24" fill={fill} role="img" aria-label={alt ?? icon.title} className={className} style={{ aspectRatio: '1', ...style }}>
         <path d={icon.path} />
       </svg>
     );
-  if (!fallback) return null;
-  return <span className={`wordmark ${className ?? ''}`} style={{ fontSize: height * 0.82, color }}>{name}</span>;
-}
-
-/** Card network mark, bottom-right of a card. */
-export function NetworkLogo({ network, height = 30 }: { network: string; height?: number }) {
-  const { data } = useStore();
-  const key = logoKey(network);
-  const custom = data.logos?.[key];
-  if (custom) return <img src={custom} alt={network} style={{ height, width: 'auto', display: 'block' }} />;
-  if (network === 'Mastercard')
-    return (
-      <svg viewBox="0 0 50 30" height={height} aria-label="Mastercard" role="img" style={{ display: 'block' }}>
-        <circle cx="17" cy="15" r="13" fill="#eb001b" />
-        <circle cx="33" cy="15" r="13" fill="#f79e1b" />
-        <path d="M25 4.7a13 13 0 0 1 0 20.6 13 13 0 0 1 0-20.6z" fill="#ff5f00" />
-      </svg>
-    );
-  if (network === 'Visa') return <BrandLogo name="visa" height={height * 1.25} />;
-  if (network === 'RuPay') return <span className="wordmark rupay" style={{ fontSize: height * 0.62 }}>RuPay<span>›</span></span>;
-  if (network === 'Other') return null;
-  return <BrandLogo name={network} height={height} />;
+  }
+  if (file) return img(`${base}logos/${file}`, 'boxed-logo');
+  return null;
 }
 
 /** Resize an uploaded image to a small PNG data URL for storage in the vault. */
-export async function fileToLogo(file: File, max = 256): Promise<string> {
+export async function fileToDataUrl(file: File, max = 256, type: 'image/png' | 'image/jpeg' = 'image/png'): Promise<string> {
   const bmp = await createImageBitmap(file);
   const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas');
   c.width = Math.round(bmp.width * s);
   c.height = Math.round(bmp.height * s);
   c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
-  return c.toDataURL('image/png');
+  return c.toDataURL(type, 0.85);
 }

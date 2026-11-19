@@ -136,7 +136,7 @@ export function LockScreen() {
   if (isSetup && step === 'intro') {
     return (
       <div className="lock">
-        <div className="liquid lock-card">
+        <div className="lock-card">
           <img src="./icon.svg" alt="" className="lock-logo" />
           <h1>SpendVault</h1>
           <p className="muted small" style={{ margin: '0 0 22px', lineHeight: 1.5 }}>
@@ -172,8 +172,8 @@ export function LockScreen() {
 
   return (
     <div className="lock">
-      <div className="liquid lock-card">
-        <div className="icon-btn" style={{ margin: '0 auto 12px', width: 54, height: 54 }}><ILock /></div>
+      <div className="lock-card">
+        <div className="glass-btn" style={{ margin: "0 auto 12px", width: 56, height: 56, background: "var(--fill)" }}><ILock /></div>
         <h1 style={{ fontSize: 24 }}>{title}</h1>
         <p className="muted small" style={{ margin: 0, minHeight: 20 }}>
           {error ? <span className="bad">{error}</span> : busy ? 'Deriving key…' : isSetup ? 'You’ll use this to unlock your vault.' : 'Your data is encrypted on this device.'}
@@ -210,7 +210,7 @@ export function LockScreen() {
             />
             <button className="btn primary block" disabled={busy || !password}>{isSetup ? (step === 'create' ? 'Continue' : 'Create vault') : 'Unlock'}</button>
             {!isSetup && biometricEnabled && (
-              <button type="button" className="btn glassy block" onClick={tryBio} disabled={busy}><IFace /> Use biometrics</button>
+              <button type="button" className="btn secondary block" onClick={tryBio} disabled={busy}><IFace /> Use biometrics</button>
             )}
           </form>
         )}

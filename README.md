@@ -1,6 +1,6 @@
 # SpendVault
 
-A private, offline-first web app (PWA) for tracking spends, storing credit/debit cards and gift cards, and finding the **MCC of any UPI QR code** — with an Apple *Liquid Glass*-inspired interface.
+A private, offline-first web app (PWA) for tracking spends, storing credit/debit cards and gift cards, and finding the **MCC of any UPI QR code**. The interface follows Apple's iOS 26 design language: system colours, grouped lists, and Liquid Glass reserved for floating controls.
 
 Everything you enter stays on your device, encrypted. There is no backend, no account and no analytics; the production build ships a CSP that blocks every network origin except its own files.
 
@@ -8,11 +8,11 @@ Everything you enter stays on your device, encrypted. There is no backend, no ac
 
 | Area | What it does |
 |---|---|
-| **Home** | Month total with month-on-month change and budget progress, 30/90-day spending chart, category donut, 6-month bars, “paid with” split, card dues & gift card balance tiles, upcoming due dates / expiring gift cards, quick actions |
+| **Home** | Month total with month-on-month change, overall and **per-category monthly budgets**, 30/90-day spending chart, category donut, 6-month bars, “paid with” split, card dues & gift card balances, upcoming due dates / expiring gift cards |
 | **Spends** | Amount, date, card used (from the Card Vault) or UPI / cash / net banking / wallet, description, category, notes, linked merchant, and **pay partly or fully with gift cards** — balances are deducted automatically and refunded if you edit or delete the spend. Month browser, search and category filters |
 | **MCC Scanner** | Scan a UPI QR with the camera (native `BarcodeDetector`, falling back to jsQR), from an image, or paste a `upi://` link. Shows payee, UPI ID, MCC + description, category and a warning for MCCs that are often excluded from card rewards. Save merchants to build your own MCC record and log a spend from them in one tap |
 | **Gift Cards** | Amazon, Flipkart, Myntra, Swiggy, Zomato and 15+ more brands (or custom). Code, PIN, value, live balance, expiry, notes, usage history, archive |
-| **Cards** | Credit/debit cards with network auto-detect and Luhn check, expiry, optional CVV, credit limit, statement day, due day, total / minimum / overdue amounts, unbilled spend this cycle, available limit, utilisation, “mark paid”. Numbers, CVVs and gift card PINs are masked and need biometric/passcode re-verification to reveal or copy |
+| **Cards** | Credit/debit cards with network auto-detect and Luhn check, expiry, optional CVV, credit limit, statement day, due day, total / minimum / overdue amounts, unbilled spend this cycle, available limit, utilisation, “mark paid”. Cards render as realistic finishes (black metal, gold, platinum, sapphire…) suggested from the card name, or use a photo of your own card. Numbers, CVVs and gift card PINs are masked and need biometric/passcode re-verification to reveal or copy |
 | **Settings** | Biometric unlock, auto-lock timer, change passcode, encrypted backup / restore, CSV export, theme (auto/light/dark), currency, monthly budget, erase data |
 
 ## Security model
@@ -29,6 +29,10 @@ Everything you enter stays on your device, encrypted. There is no backend, no ac
 - **No recovery:** if you forget the passcode the data cannot be decrypted. Keep an encrypted backup.
 
 Biometric unlock needs a browser with WebAuthn PRF support (Safari 18+ on iOS/macOS, recent Chrome/Edge). Elsewhere the app still works with the passcode. Camera and WebAuthn require HTTPS (or `localhost`).
+
+## Logos
+
+Bank, network and brand logos are public-domain/CC0 files from Wikimedia Commons (listed with sources in [`public/logos/CREDITS.md`](public/logos/CREDITS.md)) plus [Simple Icons](https://simpleicons.org). Any brand without a bundled logo can be given one from the add/edit form — uploads are stored encrypted in your vault. Logos are trademarks of their owners and are used only for identification.
 
 ## Run locally
 

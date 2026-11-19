@@ -34,7 +34,9 @@ export interface PaymentCard {
   holder: string;
   expiry: string; // MM/YY
   cvv: string;
-  theme: string;
+  theme: string; // card finish key (see lib/finishes.ts)
+  finishChosen?: boolean; // true once picked in the v2 form; otherwise a finish is suggested from the card name
+  art?: string; // optional photo of the real card front (data URL, encrypted with the vault)
   creditLimit?: number;
   statementDay?: number; // 1-31
   dueDay?: number; // 1-31
@@ -76,6 +78,7 @@ export interface Settings {
   displayName: string;
   currency: string;
   monthlyBudget: number;
+  categoryBudgets: Record<string, number>;
   autoLockMinutes: number;
   theme: 'system' | 'light' | 'dark';
   hideAmounts: boolean;
@@ -95,6 +98,7 @@ export const DEFAULT_SETTINGS: Settings = {
   displayName: '',
   currency: 'INR',
   monthlyBudget: 0,
+  categoryBudgets: {},
   autoLockMinutes: 5,
   theme: 'system',
   hideAmounts: false,

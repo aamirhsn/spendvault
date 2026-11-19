@@ -1,26 +1,27 @@
 import { useRef } from 'react';
 import { useStore } from '../lib/store';
-import { BrandLogo, fileToLogo, hasBuiltInLogo, logoKey } from '../lib/logos';
+import { Logo, LOGO_FILES, fileToDataUrl, hasLogo, logoKey } from '../lib/logos';
 import { toast } from './ui';
 
-/** Lets the user attach their own logo image to a bank / brand name (applies to every card of that name). */
+/** A list cell to attach your own logo image to a bank / brand name (applies to every card with that name). */
 export function LogoPicker({ name, label }: { name: string; label: string }) {
   const { data, setLogo } = useStore();
   const ref = useRef<HTMLInputElement>(null);
   const key = logoKey(name);
   const custom = !!data.logos?.[key];
   if (!name.trim()) return null;
+  const known = hasLogo(name, data.logos);
   return (
-    <div className="row" style={{ gap: 12 }}>
-      <span style={{ width: 52, height: 40, borderRadius: 12, display: 'grid', placeItems: 'center', background: '#1d2233', padding: 6, flex: 'none' }}>
-        <BrandLogo name={name} height={24} />
+    <div className="cell">
+      <span className="logo-tile" style={{ width: 40, height: 40, borderRadius: 10, padding: 5, boxShadow: 'inset 0 0 0 .5px var(--sep)' }}>
+        {known ? <Logo name={name} /> : <span className="mono-l" style={{ fontSize: 16 }}>{name.slice(0, 1).toUpperCase()}</span>}
       </span>
-      <div className="grow">
-        <div className="small" style={{ fontWeight: 620 }}>{label}</div>
-        <div className="tiny muted">{custom ? 'Your uploaded logo' : hasBuiltInLogo(name) ? 'Built-in logo' : 'No logo found — showing the name'}</div>
-      </div>
-      <button type="button" className="btn glassy sm" onClick={() => ref.current?.click()}>{custom ? 'Change' : 'Upload'}</button>
-      {custom && <button type="button" className="btn sm" style={{ color: 'var(--bad)', padding: '0 8px' }} onClick={() => setLogo(key, null)}>Remove</button>}
+      <span className="grow">
+        <div className="t">{label}</div>
+        <div className="st">{custom ? 'Your upload' : known ? (LOGO_FILES[key] ? 'Official logo' : 'Built-in mark') : 'Not found — upload one'}</div>
+      </span>
+      <button type="button" className="textbtn" onClick={() => ref.current?.click()}>{custom ? 'Change' : 'Upload'}</button>
+      {custom && <button type="button" className="textbtn" style={{ color: 'var(--red)' }} onClick={() => setLogo(key, null)}>Reset</button>}
       <input
         ref={ref}
         type="file"
@@ -31,8 +32,8 @@ export function LogoPicker({ name, label }: { name: string; label: string }) {
           e.target.value = '';
           if (!f) return;
           try {
-            await setLogo(key, await fileToLogo(f));
-            toast('Logo saved for ' + name);
+            await setLogo(key, await fileToDataUrl(f));
+            toast(`Logo saved for ${name}`);
           } catch {
             toast('Could not read that image');
           }

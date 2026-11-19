@@ -4,9 +4,11 @@ import * as V from '../lib/vault';
 import { platformAuthenticatorAvailable } from '../lib/webauthn';
 import { todayISO } from '../lib/format';
 import type { Settings } from '../lib/types';
-import { Field, Segmented, Sheet, Toggle, toast } from '../components/ui';
+import { FieldRow, Group, NavRow, Segmented, Sheet, Toggle, toast } from '../components/ui';
+import { BudgetsSheet } from '../components/Budgets';
+import { money } from '../lib/format';
 import { paymentLabel } from '../components/TxnRow';
-import { IBudget, IChevron, IDownload, IFace, IKey, ILock, ISun, ITimer, ITrash, IUpload, IUser, IWallet } from '../components/Icons';
+import { IDownload, IFace, IKey, ILock, ITimer, ITrash, IUpload, IWallet } from '../components/Icons';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'CAD', 'JPY'];
 const LOCKS = [1, 2, 5, 15, 30, 0];
@@ -28,6 +30,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
   const s = data.settings;
   const [panel, setPanel] = useState<Panel>(null);
   const [bioAvail, setBioAvail] = useState<boolean | null>(null);
+  const [budgets, setBudgets] = useState(false);
 
   useEffect(() => {
     platformAuthenticatorAvailable().then(setBioAvail);
@@ -35,101 +38,50 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
 
   const set = (patch: Partial<Settings>) => updateSettings(patch);
 
-  const Row = ({ icon, color, label, value, onClick, right }: { icon: React.ReactNode; color: string; label: string; value?: React.ReactNode; onClick?: () => void; right?: React.ReactNode }) => (
-    onClick ? (
-      <button className="settings-row" onClick={onClick}>
-        <span className="ic" style={{ background: color }}>{icon}</span>
-        <span className="lbl">{label}</span>
-        {value != null && <span className="val">{value}</span>}
-        <IChevron width={16} style={{ color: 'var(--text-3)' }} />
-      </button>
-    ) : (
-      <div className="settings-row">
-        <span className="ic" style={{ background: color }}>{icon}</span>
-        <span className="lbl">{label}</span>
-        {value != null && <span className="val">{value}</span>}
-        {right}
-      </div>
-    )
-  );
-
   return (
-    <Sheet open={open} onClose={onClose} title="Settings">
+    <Sheet open={open} onClose={onClose} title="Settings" cancelLabel="Done">
       <div className="stack-lg">
-        <div className="glass settings-group">
-          <div className="settings-row">
-            <span className="ic" style={{ background: 'linear-gradient(135deg,#5b8cff,#8a5bff)' }}><IUser /></span>
-            <input className="input grow" style={{ height: 40 }} placeholder="Your name (for greeting)" value={s.displayName} onChange={(e) => set({ displayName: e.target.value.slice(0, 30) })} aria-label="Display name" />
-          </div>
-          <div className="settings-row">
-            <span className="ic" style={{ background: 'linear-gradient(135deg,#11998e,#38ef7d)' }}><IWallet /></span>
-            <span className="lbl">Currency</span>
-            <select className="select" style={{ width: 110, height: 38 }} value={s.currency} onChange={(e) => set({ currency: e.target.value })} aria-label="Currency">
+        <Group>
+          <FieldRow label="Your name"><input placeholder="For the greeting" value={s.displayName} onChange={(e) => set({ displayName: e.target.value.slice(0, 30) })} /></FieldRow>
+          <FieldRow label="Currency">
+            <select value={s.currency} onChange={(e) => set({ currency: e.target.value })}>
               {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
             </select>
-          </div>
-          <div className="settings-row">
-            <span className="ic" style={{ background: 'linear-gradient(135deg,#f6a23a,#f05c5c)' }}><IBudget /></span>
-            <span className="lbl">Monthly budget</span>
-            <input className="input num" style={{ width: 130, height: 38, textAlign: 'right' }} inputMode="numeric" placeholder="None" value={s.monthlyBudget || ''} onChange={(e) => set({ monthlyBudget: Number(e.target.value.replace(/\D/g, '')) || 0 })} aria-label="Monthly budget" />
-          </div>
-          <div className="settings-row">
-            <span className="ic" style={{ background: 'linear-gradient(135deg,#606c88,#3f4c6b)' }}><ISun /></span>
-            <span className="lbl">Appearance</span>
-            <Segmented value={s.theme} onChange={(v) => set({ theme: v })} options={[{ value: 'system', label: 'Auto' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
-          </div>
-        </div>
+          </FieldRow>
+          <NavRow title="Budgets" value={s.monthlyBudget ? money(s.monthlyBudget, s.currency, { decimals: false }) : Object.keys(s.categoryBudgets ?? {}).length ? `${Object.keys(s.categoryBudgets).length} categories` : 'Off'} onClick={() => setBudgets(true)} />
+          <FieldRow label="Appearance">
+            <select value={s.theme} onChange={(e) => set({ theme: e.target.value as Settings['theme'] })}>
+              <option value="system">Automatic</option><option value="light">Light</option><option value="dark">Dark</option>
+            </select>
+          </FieldRow>
+          <div className="cell"><span className="grow">Hide amounts</span><Toggle label="Hide amounts" on={s.hideAmounts} onChange={(v) => set({ hideAmounts: v })} /></div>
+        </Group>
 
-        <div>
-          <div className="field-label" style={{ margin: '0 0 8px 8px' }}>SECURITY</div>
-          <div className="glass settings-group">
-            <Row
-              icon={<IFace />}
-              color="linear-gradient(135deg,#00c6fb,#005bea)"
-              label="Biometric unlock"
-              right={
-                <Toggle
-                  label="Biometric unlock"
-                  on={biometricEnabled}
-                  onChange={async (on) => {
-                    if (on) setPanel('bio');
-                    else {
-                      await V.disableBiometric();
-                      await store.refreshMeta();
-                      toast('Biometric unlock turned off');
-                    }
-                  }}
-                />
-              }
-            />
-            {bioAvail === false && !biometricEnabled && <div className="tiny faint" style={{ padding: '0 10px 10px 54px' }}>No platform authenticator detected in this browser.</div>}
-            <div className="settings-row">
-              <span className="ic" style={{ background: 'linear-gradient(135deg,#7f53ac,#647dee)' }}><ITimer /></span>
-              <span className="lbl">Auto-lock</span>
-              <select className="select" style={{ width: 130, height: 38 }} value={s.autoLockMinutes} onChange={(e) => set({ autoLockMinutes: Number(e.target.value) })} aria-label="Auto-lock">
-                {LOCKS.map((m) => <option key={m} value={m}>{m ? `${m} min` : 'Never'}</option>)}
-              </select>
-            </div>
-            <Row icon={<IKey />} color="linear-gradient(135deg,#ff9a44,#fc6076)" label={`Change ${meta?.passcode.kind === 'pin' ? 'PIN' : 'password'}`} onClick={() => setPanel('passcode')} />
-            <Row icon={<ILock />} color="linear-gradient(135deg,#434343,#7a7a7a)" label="Lock now" onClick={() => { onClose(); lock(); }} />
-          </div>
-        </div>
+        <Group header="Security" footer={bioAvail === false && !biometricEnabled ? 'This browser has no Face ID / Touch ID / fingerprint authenticator available.' : 'Face ID / fingerprint unlocks the vault with a key held in your device’s secure hardware.'}>
+          <NavRow icon={<IFace />} iconBg="var(--green)" title="Face ID / Touch ID" right={<Toggle label="Biometric unlock" on={biometricEnabled} onChange={async (on) => {
+            if (on) setPanel('bio');
+            else { await V.disableBiometric(); await store.refreshMeta(); toast('Biometric unlock turned off'); }
+          }} />} />
+          <NavRow icon={<ITimer />} iconBg="var(--indigo)" title="Auto-Lock" right={
+            <select style={{ flex: 'none', width: 'auto' }} value={s.autoLockMinutes} onChange={(e) => set({ autoLockMinutes: Number(e.target.value) })} aria-label="Auto-lock">
+              {LOCKS.map((m) => <option key={m} value={m}>{m ? `${m} min` : 'Never'}</option>)}
+            </select>} />
+          <NavRow icon={<IKey />} iconBg="var(--orange)" title={`Change ${meta?.passcode.kind === 'pin' ? 'PIN' : 'Password'}`} onClick={() => setPanel('passcode')} />
+          <NavRow icon={<ILock />} iconBg="var(--gray)" title="Lock Now" onClick={() => { onClose(); lock(); }} />
+        </Group>
 
-        <div>
-          <div className="field-label" style={{ margin: '0 0 8px 8px' }}>DATA</div>
-          <div className="glass settings-group">
-            <Row icon={<IDownload />} color="linear-gradient(135deg,#11998e,#38ef7d)" label="Export encrypted backup" onClick={() => setPanel('export')} />
-            <Row icon={<IUpload />} color="linear-gradient(135deg,#5b8cff,#8a5bff)" label="Restore from backup" onClick={() => setPanel('import')} />
-            <Row icon={<IDownload />} color="linear-gradient(135deg,#f6a23a,#f05c5c)" label="Export spends as CSV" onClick={() => setPanel('csv')} />
-            <Row icon={<ITrash />} color="linear-gradient(135deg,#ff5f6d,#e0315b)" label="Erase all data" onClick={() => setPanel('wipe')} />
-          </div>
-        </div>
+        <Group header="Data" footer="Backups are encrypted with a password you choose and can be restored on any device.">
+          <NavRow icon={<IDownload />} iconBg="var(--tint)" title="Export Encrypted Backup" onClick={() => setPanel('export')} />
+          <NavRow icon={<IUpload />} iconBg="var(--teal)" title="Restore from Backup" onClick={() => setPanel('import')} />
+          <NavRow icon={<IWallet />} iconBg="var(--green)" title="Export Spends (CSV)" onClick={() => setPanel('csv')} />
+        </Group>
 
-        <div className="glass pad small muted" style={{ lineHeight: 1.55 }}>
-          <b style={{ color: 'var(--text)' }}>How your data is protected</b>
-          <br />Everything is stored only in this browser (IndexedDB) and encrypted with AES-256-GCM. The key is wrapped by your passcode (PBKDF2-SHA256, 600k iterations) and, if enabled, by a secret from your device’s biometric hardware (WebAuthn PRF). The app makes no network requests. Clearing site data deletes the vault — keep encrypted backups.
+        <div className="group"><button className="cell danger" onClick={() => setPanel('wipe')}>Erase All Data</button></div>
+
+        <div className="group-f center" style={{ lineHeight: 1.5 }}>
+          Stored only on this device, encrypted with AES-256-GCM. No accounts, no servers, no tracking.<br />
+          SpendVault 2.0 · {data.transactions.length} spends · {data.cards.length} cards · {data.giftCards.length} gift cards
         </div>
-        <div className="tiny faint center">SpendVault v1.0 · {data.transactions.length} spends · {data.cards.length} cards · {data.giftCards.length} gift cards · {data.merchants.length} merchants</div>
       </div>
 
       {panel === 'bio' && <BioPanel onClose={() => setPanel(null)} />}
@@ -138,6 +90,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
       {panel === 'import' && <ImportPanel onClose={() => setPanel(null)} />}
       {panel === 'csv' && <CsvPanel onClose={() => setPanel(null)} />}
       {panel === 'wipe' && <WipePanel onClose={() => setPanel(null)} />}
+      <BudgetsSheet open={budgets} onClose={() => setBudgets(false)} />
     </Sheet>
   );
 }
@@ -270,7 +223,7 @@ function ImportPanel({ onClose }: { onClose: () => void }) {
         }
       }}>
         <p className="small warn" style={{ margin: 0 }}>Restoring replaces everything currently in this vault.</p>
-        <button type="button" className="btn glassy block" onClick={() => fileRef.current?.click()}><IUpload /> {fname || 'Choose backup file'}</button>
+        <button type="button" className="btn secondary block" onClick={() => fileRef.current?.click()}><IUpload /> {fname || 'Choose backup file'}</button>
         <input ref={fileRef} className="hidden-input" type="file" accept=".svault,application/json" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setFname(f.name); setText(await f.text()); } }} />
         <input className="input" type="password" placeholder="Backup password" value={pw} onChange={(e) => setPw(e.target.value)} />
         {err && <div className="err">{err}</div>}
@@ -312,5 +265,14 @@ function WipePanel({ onClose }: { onClose: () => void }) {
         <button className="btn danger block" disabled={txt !== 'ERASE'} onClick={async () => { await V.wipeVault(); location.reload(); }}><ITrash /> Erase everything</button>
       </div>
     </Sheet>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="stack" style={{ gap: 6 }}>
+      <span className="foot muted" style={{ paddingLeft: 4 }}>{label}</span>
+      {children}
+    </label>
   );
 }

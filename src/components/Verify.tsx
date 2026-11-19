@@ -62,7 +62,7 @@ export function useVerify() {
         {err && <div className="err">{err}</div>}
         <button className="btn primary block" disabled={!code}>Verify</button>
         {biometricEnabled && (
-          <button type="button" className="btn glassy block" onClick={async () => { try { if (await verifyBiometric()) finish(true); } catch { setErr('Biometric check failed'); } }}>
+          <button type="button" className="btn secondary block" onClick={async () => { try { if (await verifyBiometric()) finish(true); } catch { setErr('Biometric check failed'); } }}>
             <IFace /> Try biometrics again
           </button>
         )}

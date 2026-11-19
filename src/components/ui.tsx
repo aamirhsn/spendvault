@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { IClose } from './Icons';
+import { IChevron } from './Icons';
 
-export function Sheet({ open, onClose, title, children, actions }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; actions?: ReactNode }) {
+/** iOS-style modal sheet: Cancel on the left, title centre, primary action on the right. */
+export function Sheet({ open, onClose, title, children, actions, cancelLabel = 'Cancel' }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; actions?: ReactNode; cancelLabel?: string }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -18,14 +19,11 @@ export function Sheet({ open, onClose, title, children, actions }: { open: boole
   return createPortal(
     <>
       <div className="sheet-backdrop" onClick={onClose} />
-      <div className="sheet liquid" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
-        <div className="sheet-grab" />
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
         <div className="sheet-head">
-          <button className="icon-btn sm" onClick={onClose} aria-label="Close">
-            <IClose width={18} height={18} />
-          </button>
+          <button className="textbtn l" onClick={onClose}>{cancelLabel}</button>
           <h3 className="ellipsis">{title}</h3>
-          <div style={{ minWidth: 34, display: 'flex', justifyContent: 'flex-end' }}>{actions}</div>
+          <div className="r">{actions}</div>
         </div>
         <div className="sheet-body">{children}</div>
       </div>
@@ -34,25 +32,54 @@ export function Sheet({ open, onClose, title, children, actions }: { open: boole
   );
 }
 
-export function Field({ label, children, hint, error }: { label: string; children: ReactNode; hint?: ReactNode; error?: string | null }) {
+/** A grouped inset list with optional header/footer text. */
+export function Group({ header, footer, children, style }: { header?: ReactNode; footer?: ReactNode; children: ReactNode; style?: React.CSSProperties }) {
   return (
-    <div className="field">
-      <label>{label}</label>
-      {children}
-      {error ? <div className="err">{error}</div> : hint ? <div className="hint">{hint}</div> : null}
-    </div>
+    <section style={style}>
+      {header && <div className="group-h">{header}</div>}
+      <div className="group">{children}</div>
+      {footer && <div className="group-f">{footer}</div>}
+    </section>
   );
 }
 
+/** Label-left / control-right form row. */
+export function FieldRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="cell">
+      <span className="lbl">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/** Navigation-style row with optional icon, value and chevron. */
+export function NavRow({ icon, iconBg, title, subtitle, value, onClick, right, chevron = true }: { icon?: ReactNode; iconBg?: string; title: ReactNode; subtitle?: ReactNode; value?: ReactNode; onClick?: () => void; right?: ReactNode; chevron?: boolean }) {
+  const inner = (
+    <>
+      {icon && <span className="ic" style={{ background: iconBg }}>{icon}</span>}
+      <span className="grow">
+        <div className="t ellipsis">{title}</div>
+        {subtitle && <div className="st ellipsis">{subtitle}</div>}
+      </span>
+      {value != null && <span className="v">{value}</span>}
+      {right}
+      {onClick && chevron && !right && <IChevron className="chev" />}
+    </>
+  );
+  const cls = `cell ${icon ? 'icon-inset' : ''}`;
+  return onClick ? <button className={cls} onClick={onClick}>{inner}</button> : <div className={cls}>{inner}</div>;
+}
+
 export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <button role="switch" aria-checked={on} aria-label={label} className={`toggle ${on ? 'on' : ''}`} onClick={() => onChange(!on)} />;
+  return <button type="button" role="switch" aria-checked={on} aria-label={label} className={`toggle ${on ? 'on' : ''}`} onClick={() => onChange(!on)} />;
 }
 
 export function Segmented<T extends string>({ value, options, onChange, full }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; full?: boolean }) {
   return (
     <div className={`seg ${full ? 'full' : ''}`} role="tablist">
       {options.map((o) => (
-        <button key={o.value} role="tab" aria-selected={value === o.value} className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+        <button type="button" key={o.value} role="tab" aria-selected={value === o.value} className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}
@@ -62,11 +89,28 @@ export function Segmented<T extends string>({ value, options, onChange, full }: 
 
 export function Empty({ icon, title, text, action }: { icon: string; title: string; text: string; action?: ReactNode }) {
   return (
-    <div className="glass empty">
+    <div className="card empty">
       <div className="big-ic">{icon}</div>
       <h3>{title}</h3>
-      <p className="small" style={{ margin: '0 0 16px' }}>{text}</p>
+      <p>{text}</p>
       {action}
+    </div>
+  );
+}
+
+/** Two-step destructive action row. */
+export function DeleteRow({ label, confirmLabel, onConfirm }: { label: string; confirmLabel?: string; onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <div className="group">
+      {armed ? (
+        <>
+          <button className="cell danger" style={{ fontWeight: 600 }} onClick={onConfirm}>{confirmLabel ?? `Confirm — ${label}`}</button>
+          <button className="cell tint" onClick={() => setArmed(false)}>Cancel</button>
+        </>
+      ) : (
+        <button className="cell danger" onClick={() => setArmed(true)}>{label}</button>
+      )}
     </div>
   );
 }
@@ -84,21 +128,16 @@ export function ToastHost() {
   }, []);
   useEffect(() => {
     if (!msg) return;
-    const t = setTimeout(() => setMsg(null), 2200);
+    const t = setTimeout(() => setMsg(null), 2000);
     return () => clearTimeout(t);
   }, [msg]);
-  return msg ? (
-    <div key={msg.key} className="toast liquid" role="status">
-      {msg.text}
-    </div>
-  ) : null;
+  return msg ? <div key={msg.key} className="toast liquid" role="status">{msg.text}</div> : null;
 }
 
 export async function copyText(text: string, label = 'Copied') {
   try {
     await navigator.clipboard.writeText(text);
-    toast(`${label} — clipboard clears in 30s`);
-    // Best-effort: clear sensitive data from the clipboard after a while.
+    toast(`${label} · clears in 30s`);
     setTimeout(() => navigator.clipboard.writeText('').catch(() => {}), 30_000);
   } catch {
     toast('Copy failed');

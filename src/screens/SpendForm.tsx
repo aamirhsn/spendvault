@@ -2,15 +2,22 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import type { SpendDraft } from '../lib/nav';
 import type { GiftCardUse, PaymentType, Transaction } from '../lib/types';
-import { CATEGORIES, giftBrandColors } from '../lib/categories';
+import { CATEGORIES } from '../lib/categories';
 import { last4, money, round2, todayISO } from '../lib/format';
 import { categoryForMcc, lookupMcc } from '../lib/mcc';
-import { Field, Sheet, Toggle, toast } from '../components/ui';
-import { ITrash } from '../components/Icons';
+import { DeleteRow, FieldRow, Group, Sheet, Toggle, toast } from '../components/ui';
 import { PAYMENT_LABELS } from '../components/TxnRow';
-import { BrandLogo, hasBuiltInLogo, logoKey } from '../lib/logos';
+import { LogoTile } from './GiftCards';
 
 const METHODS: PaymentType[] = ['card', 'upi', 'cash', 'netbanking', 'wallet', 'giftcard', 'other'];
+
+function currencySymbol(c: string) {
+  try {
+    return (0).toLocaleString(c === 'INR' ? 'en-IN' : undefined, { style: 'currency', currency: c, maximumFractionDigits: 0 }).replace(/[\d\s.,]/g, '');
+  } catch {
+    return c;
+  }
+}
 
 export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?: Transaction; onClose: () => void }) {
   const { data, saveTransaction, deleteTransaction } = useStore();
@@ -26,20 +33,17 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
   const [notes, setNotes] = useState(init.notes ?? '');
   const [useGift, setUseGift] = useState((init.giftCards?.length ?? 0) > 0);
   const [gifts, setGifts] = useState<Record<string, string>>(() =>
-    Object.fromEntries((init.giftCards ?? []).map((g) => [g.giftCardId, String(g.amount)])),
+    Object.fromEntries((init.giftCards ?? []).map((g) => [g.giftCardId, g.amount ? String(g.amount) : ''])),
   );
   const [error, setError] = useState('');
-  const [confirmDel, setConfirmDel] = useState(false);
 
-  // Balance available on each gift card for this transaction (includes what this txn already used when editing).
-  const giftOptions = useMemo(() => {
-    return giftCards
-      .map((g) => {
-        const prev = edit?.giftCards.find((u) => u.giftCardId === g.id)?.amount ?? 0;
-        return { g, available: round2(g.balance + prev) };
-      })
-      .filter(({ g, available }) => (!g.archived && available > 0) || gifts[g.id]);
-  }, [giftCards, edit, gifts]);
+  const giftOptions = useMemo(
+    () =>
+      giftCards
+        .map((g) => ({ g, available: round2(g.balance + (edit?.giftCards.find((u) => u.giftCardId === g.id)?.amount ?? 0)) }))
+        .filter(({ g, available }) => (!g.archived && available > 0) || gifts[g.id] !== undefined),
+    [giftCards, edit, gifts],
+  );
 
   const amt = Number(amount) || 0;
   const giftUses: GiftCardUse[] = useGift
@@ -57,24 +61,23 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
     if (c) setCategory(c);
   };
 
-  const autoFill = (id: string) => {
+  const fill = (id: string) => {
     const opt = giftOptions.find((o) => o.g.id === id);
     if (!opt) return;
-    const othersSum = giftUses.filter((u) => u.giftCardId !== id).reduce((a, u) => a + u.amount, 0);
-    const v = Math.max(0, Math.min(opt.available, round2(amt - othersSum)));
+    const others = giftUses.filter((u) => u.giftCardId !== id).reduce((a, u) => a + u.amount, 0);
+    const v = Math.max(0, Math.min(opt.available, round2(amt - others)));
     setGifts((s) => ({ ...s, [id]: v ? String(v) : '' }));
   };
 
   const save = async () => {
     setError('');
-    if (!(amt > 0)) return setError('Enter an amount greater than zero.');
-    if (!date) return setError('Pick a date.');
+    if (!(amt > 0)) return setError('Enter an amount.');
     if (ptype === 'card' && !cardId) return setError('Choose a card, or add one in the Cards tab.');
     for (const u of giftUses) {
       const opt = giftOptions.find((o) => o.g.id === u.giftCardId);
-      if (!opt || u.amount > opt.available + 0.001) return setError(`Gift card amount exceeds its balance (${opt ? money(opt.available, settings.currency) : 'removed'}).`);
+      if (!opt || u.amount > opt.available + 0.001) return setError(`Gift card amount is more than its balance.`);
     }
-    if (giftSum > amt + 0.001) return setError('Gift card total is more than the bill amount.');
+    if (giftSum > amt + 0.001) return setError('Gift cards cover more than the bill amount.');
     if (ptype === 'giftcard' && Math.abs(remainder) > 0.001) return setError('“Gift card only” needs gift cards to cover the full amount.');
     await saveTransaction({
       id: edit?.id,
@@ -87,122 +90,85 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
       merchantId: merchantId || undefined,
       notes: notes.trim(),
     });
-    toast(edit ? 'Spend updated' : 'Spend saved');
+    toast(edit ? 'Spend updated' : 'Spend added');
     onClose();
   };
 
   const merchant = merchants.find((m) => m.id === merchantId);
   const mccInfo = merchant?.mcc ? lookupMcc(merchant.mcc) : null;
+  const fmt = (n: number) => money(n, settings.currency);
 
   return (
-    <Sheet open onClose={onClose} title={edit ? 'Edit spend' : 'New spend'} actions={<button className="btn primary sm" onClick={save}>Save</button>}>
+    <Sheet open onClose={onClose} title={edit ? 'Edit Spend' : 'New Spend'} actions={<button className="textbtn bold" onClick={save}>{edit ? 'Done' : 'Add'}</button>}>
       <div className="stack-lg">
-        <div className="field">
-          <input className="input amount num" inputMode="decimal" placeholder={money(0, settings.currency)} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} aria-label="Amount" autoFocus={!edit} />
+        <div className="amount-entry">
+          <span>{currencySymbol(settings.currency)}</span>
+          <input inputMode="decimal" placeholder="0" style={{ width: `${Math.max(1, amount.length) * 0.62 + 0.3}em` }} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} aria-label="Amount" autoFocus={!edit} />
         </div>
 
-        <div className="grid2">
-          <Field label="Date">
-            <input className="input" type="date" value={date} max="2100-12-31" onChange={(e) => setDate(e.target.value)} />
-          </Field>
-          <Field label="Merchant (from scans)">
-            <select className="select" value={merchantId} onChange={(e) => pickMerchant(e.target.value)}>
-              <option value="">None</option>
-              {merchants.map((m) => <option key={m.id} value={m.id}>{m.name || m.vpa}{m.mcc ? ` · ${m.mcc}` : ''}</option>)}
+        <Group>
+          <FieldRow label="Description"><input placeholder="What was it?" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={120} /></FieldRow>
+          <FieldRow label="Category">
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.icon}  {c.name}</option>)}
             </select>
-          </Field>
-        </div>
-        {merchant && <div className="hint" style={{ marginTop: -10 }}>MCC {merchant.mcc || '—'}{mccInfo ? ` · ${mccInfo.desc}` : ''} · {merchant.vpa}</div>}
-
-        <Field label="Description">
-          <input className="input" placeholder="e.g. Weekly groceries" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={120} />
-        </Field>
-
-        <div className="field">
-          <span className="field-label">Category</span>
-          <div className="pick-grid">
-            {CATEGORIES.map((c) => (
-              <button key={c.name} className={`pick ${category === c.name ? 'on' : ''}`} onClick={() => setCategory(c.name)} type="button">
-                <span className="e">{c.icon}</span>{c.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="field">
-          <span className="field-label">Paid with</span>
-          <div className="chips" style={{ flexWrap: 'wrap' }}>
-            {METHODS.map((m) => (
-              <button key={m} type="button" className={`filter-chip ${ptype === m ? 'on' : ''}`} onClick={() => { setPtype(m); if (m === 'giftcard') setUseGift(true); }}>
-                {PAYMENT_LABELS[m]}
-              </button>
-            ))}
-          </div>
-          {ptype === 'card' && (
-            cards.length ? (
-              <select className="select" value={cardId} onChange={(e) => setCardId(e.target.value)} aria-label="Card used">
-                {cards.map((c) => <option key={c.id} value={c.id}>{c.bank} {c.name} ({c.kind}) •{last4(c.number)}</option>)}
+          </FieldRow>
+          <FieldRow label="Date"><input type="date" value={date} max="2100-12-31" onChange={(e) => setDate(e.target.value)} /></FieldRow>
+          {merchants.length > 0 && (
+            <FieldRow label="Merchant">
+              <select value={merchantId} onChange={(e) => pickMerchant(e.target.value)}>
+                <option value="">None</option>
+                {merchants.map((m) => <option key={m.id} value={m.id}>{m.name || m.vpa}</option>)}
               </select>
-            ) : (
-              <div className="hint">No cards in your vault yet — add one from the Cards tab.</div>
-            )
+            </FieldRow>
           )}
-        </div>
+        </Group>
+        {merchant && <div className="group-f" style={{ marginTop: -16 }}>MCC {merchant.mcc || '—'}{mccInfo ? ` · ${mccInfo.desc}` : ''}</div>}
 
-        <div className="glass tight stack">
-          <div className="row between">
-            <div>
-              <div style={{ fontWeight: 650 }}>🎁 Use gift cards</div>
-              <div className="tiny muted">Balances are deducted automatically</div>
-            </div>
+        <Group>
+          <FieldRow label="Paid with">
+            <select value={ptype} onChange={(e) => { const v = e.target.value as PaymentType; setPtype(v); if (v === 'giftcard') setUseGift(true); }}>
+              {METHODS.map((m) => <option key={m} value={m}>{PAYMENT_LABELS[m]}</option>)}
+            </select>
+          </FieldRow>
+          {ptype === 'card' && (
+            <FieldRow label="Card">
+              {cards.length ? (
+                <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
+                  {cards.map((c) => <option key={c.id} value={c.id}>{c.name || c.bank} ••{last4(c.number)}</option>)}
+                </select>
+              ) : <span className="v grow">Add one in Cards</span>}
+            </FieldRow>
+          )}
+          <div className="cell">
+            <span className="grow">Use gift cards</span>
             <Toggle on={useGift} onChange={setUseGift} label="Use gift cards" />
           </div>
-          {useGift && (
-            giftOptions.length === 0 ? (
-              <div className="hint">No gift cards with balance. Add some in the Gift Cards tab.</div>
-            ) : (
-              <>
-                {giftOptions.map(({ g, available }) => {
-                  const [c1, c2] = giftBrandColors(g.brand);
-                  return (
-                    <div key={g.id} className="row">
-                      <span style={{ width: 36, height: 36, borderRadius: 11, background: `linear-gradient(135deg, ${c1}, ${c2})`, flex: 'none', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13 }}>
-                        {hasBuiltInLogo(g.brand) || data.logos?.[logoKey(g.brand)] ? <BrandLogo name={g.brand} height={18} /> : g.brand.slice(0, 1).toUpperCase()}
-                      </span>
-                      <div className="grow">
-                        <div className="small" style={{ fontWeight: 620 }}>{g.brand} <span className="faint">•{g.code.slice(-4)}</span></div>
-                        <div className="tiny muted">Available {money(available, settings.currency)}</div>
-                      </div>
-                      <input className="input num" style={{ width: 110, height: 40, textAlign: 'right' }} inputMode="decimal" placeholder="0" value={gifts[g.id] ?? ''} onChange={(e) => setGifts((s) => ({ ...s, [g.id]: e.target.value.replace(/[^\d.]/g, '') }))} aria-label={`Amount from ${g.brand}`} />
-                      <button type="button" className="btn glassy sm" style={{ padding: '0 10px' }} onClick={() => autoFill(g.id)}>Max</button>
-                    </div>
-                  );
-                })}
-                <div className="row between small" style={{ borderTop: '1px solid var(--hair)', paddingTop: 10 }}>
-                  <span className="muted">Gift cards {money(giftSum, settings.currency)}</span>
-                  <span>{ptype === 'giftcard' ? 'Remaining' : `Charged to ${PAYMENT_LABELS[ptype]}`} <b className={remainder < 0 ? 'bad' : ''}>{money(Math.max(0, remainder), settings.currency)}</b></span>
-                </div>
-              </>
-            )
-          )}
-        </div>
-
-        <Field label="Notes">
-          <textarea className="textarea" placeholder="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} />
-        </Field>
-
-        {error && <div className="err">{error}</div>}
-        <button className="btn primary block" onClick={save}>{edit ? 'Save changes' : 'Add spend'}</button>
-        {edit && (
-          confirmDel ? (
-            <div className="row">
-              <button className="btn glassy grow" onClick={() => setConfirmDel(false)}>Cancel</button>
-              <button className="btn danger grow" onClick={async () => { await deleteTransaction(edit.id); toast('Spend deleted'); onClose(); }}>Delete{edit.giftCards.length ? ' & refund gift cards' : ''}</button>
+          {useGift && giftOptions.length === 0 && <div className="cell st">No gift cards with balance.</div>}
+          {useGift && giftOptions.map(({ g, available }) => (
+            <div className="cell" key={g.id} style={{ ['--inset' as string]: '16px' }}>
+              <LogoTile brand={g.brand} size={34} />
+              <span className="grow">
+                <div className="t ellipsis" style={{ fontSize: 15 }}>{g.brand}</div>
+                <div className="st" style={{ fontSize: 13 }}>{fmt(available)} available</div>
+              </span>
+              <input inputMode="decimal" placeholder="0" style={{ maxWidth: 90 }} value={gifts[g.id] ?? ''} onChange={(e) => setGifts((s) => ({ ...s, [g.id]: e.target.value.replace(/[^\d.]/g, '') }))} aria-label={`Amount from ${g.brand}`} />
+              <button type="button" className="textbtn" style={{ fontSize: 15 }} onClick={() => fill(g.id)}>Max</button>
             </div>
-          ) : (
-            <button className="btn ghost-danger block" onClick={() => setConfirmDel(true)}><ITrash width={18} /> Delete spend</button>
-          )
+          ))}
+        </Group>
+        {useGift && giftSum > 0 && (
+          <div className="group-f" style={{ marginTop: -16 }}>
+            {fmt(giftSum)} from gift cards · <b className={remainder < 0 ? 'bad' : ''}>{fmt(Math.max(0, remainder))}</b> {ptype === 'giftcard' ? 'remaining' : `charged to ${PAYMENT_LABELS[ptype].toLowerCase()}`}
+          </div>
         )}
+
+        <Group header="Notes">
+          <div className="cell"><textarea placeholder="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></div>
+        </Group>
+
+        {error && <div className="group-f bad" style={{ marginTop: -10 }}>{error}</div>}
+        {edit && <DeleteRow label="Delete spend" confirmLabel={edit.giftCards.length ? 'Delete and refund gift cards' : 'Delete spend'} onConfirm={async () => { await deleteTransaction(edit.id); toast('Spend deleted'); onClose(); }} />}
       </div>
     </Sheet>
   );

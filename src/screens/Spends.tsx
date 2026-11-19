@@ -27,11 +27,7 @@ export function Spends() {
 
   const groups = useMemo(() => {
     const m = new Map<string, typeof filtered>();
-    for (const t of filtered) {
-      const arr = m.get(t.date) ?? [];
-      arr.push(t);
-      m.set(t.date, arr);
-    }
+    for (const t of filtered) m.set(t.date, [...(m.get(t.date) ?? []), t]);
     return [...m.entries()];
   }, [filtered]);
 
@@ -42,55 +38,45 @@ export function Spends() {
   return (
     <div className="screen">
       <header className="topbar">
-        <div>
-          <h1>Spends</h1>
-          <div className="sub">{filtered.length} transactions · <b className="num">{fmt(total)}</b></div>
-        </div>
-        <button className="icon-btn" onClick={() => nav.newSpend()} aria-label="Add spend" style={{ color: 'var(--accent)' }}><IPlus /></button>
+        <h1>Spends</h1>
+        <div className="actions"><button className="glass-btn liquid tint" onClick={() => nav.newSpend()} aria-label="Add spend"><IPlus /></button></div>
       </header>
 
       <div className="stack">
-        <div className="glass row between" style={{ padding: 6, borderRadius: 999 }}>
-          <button className="icon-btn sm" aria-label="Previous month" disabled={month === 'all'} onClick={() => month !== 'all' && setMonth(addMonths(month, -1))}><IBack width={18} /></button>
-          <button className="small" style={{ fontWeight: 650 }} onClick={() => setMonth(month === 'all' ? monthKey(todayISO()) : 'all')}>
-            {month === 'all' ? 'All time' : monthLabel(month)} <span className="faint tiny">· tap for {month === 'all' ? 'this month' : 'all'}</span>
+        <div className="card row between" style={{ padding: '6px 8px' }}>
+          <button className="glass-btn" style={{ width: 36, height: 36, color: 'var(--tint)', opacity: month === 'all' ? 0.3 : 1 }} disabled={month === 'all'} aria-label="Previous month" onClick={() => month !== 'all' && setMonth(addMonths(month, -1))}><IBack width={18} /></button>
+          <button className="center" onClick={() => setMonth(month === 'all' ? monthKey(todayISO()) : 'all')}>
+            <div style={{ fontWeight: 600 }}>{month === 'all' ? 'All time' : monthLabel(month)}</div>
+            <div className="foot muted num">{filtered.length} spends · {fmt(total)}</div>
           </button>
-          <button className="icon-btn sm" aria-label="Next month" disabled={month === 'all'} onClick={() => month !== 'all' && setMonth(addMonths(month, 1))}><IChevron width={18} /></button>
+          <button className="glass-btn" style={{ width: 36, height: 36, color: 'var(--tint)', opacity: month === 'all' ? 0.3 : 1 }} disabled={month === 'all'} aria-label="Next month" onClick={() => month !== 'all' && setMonth(addMonths(month, 1))}><IChevron width={18} /></button>
         </div>
 
-        <div className="input-wrap">
-          <input className="input" style={{ paddingLeft: 42, borderRadius: 999 }} placeholder="Search description, notes, card…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search spends" />
-          <ISearch style={{ position: 'absolute', left: 14, top: 13, color: 'var(--text-3)' }} width={20} />
+        <div className="search">
+          <ISearch />
+          <input className="input" placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search spends" />
         </div>
 
-        <div className="chips">
-          <button className={`filter-chip ${!cat ? 'on' : ''}`} onClick={() => setCat(null)}>All</button>
-          {CATEGORIES.filter((c) => usedCats.has(c.name)).map((c) => (
-            <button key={c.name} className={`filter-chip ${cat === c.name ? 'on' : ''}`} onClick={() => setCat(cat === c.name ? null : c.name)}>
-              {c.icon} {c.name}
-            </button>
-          ))}
-        </div>
+        {usedCats.size > 1 && (
+          <div className="chips">
+            <button className={`chip ${!cat ? 'on' : ''}`} onClick={() => setCat(null)}>All</button>
+            {CATEGORIES.filter((c) => usedCats.has(c.name)).map((c) => (
+              <button key={c.name} className={`chip ${cat === c.name ? 'on' : ''}`} onClick={() => setCat(cat === c.name ? null : c.name)}>{c.icon} {c.name}</button>
+            ))}
+          </div>
+        )}
 
         {groups.length === 0 ? (
-          <Empty
-            icon="🧾"
-            title={transactions.length ? 'Nothing matches' : 'No spends yet'}
-            text={transactions.length ? 'Try a different month, category or search.' : 'Track purchases with card, UPI, cash or gift cards.'}
-            action={<button className="btn primary" onClick={() => nav.newSpend()}><IPlus /> Add spend</button>}
-          />
+          <Empty icon="🧾" title={transactions.length ? 'No results' : 'No spends yet'} text={transactions.length ? 'Try another month, category or search.' : 'Log purchases made by card, UPI, cash or gift cards.'} action={<button className="btn primary" onClick={() => nav.newSpend()}>Add spend</button>} />
         ) : (
-          groups.map(([date, list]) => (
-            <div key={date}>
-              <div className="date-head">
-                <span>{prettyDate(date)}</span>
-                <span className="num">{fmt(list.reduce((a, t) => a + t.amount, 0))}</span>
-              </div>
-              <div className="glass list">
-                {list.map((t) => <TxnRow key={t.id} t={t} cards={cards} settings={settings} onClick={() => nav.editSpend(t)} />)}
-              </div>
-            </div>
-          ))
+          <div>
+            {groups.map(([date, list]) => (
+              <section key={date}>
+                <div className="date-h"><span>{prettyDate(date)}</span><span className="num">{fmt(list.reduce((a, t) => a + t.amount, 0))}</span></div>
+                <div className="group">{list.map((t) => <TxnRow key={t.id} t={t} cards={cards} settings={settings} onClick={() => nav.editSpend(t)} />)}</div>
+              </section>
+            ))}
+          </div>
         )}
       </div>
     </div>

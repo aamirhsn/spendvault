@@ -33,7 +33,7 @@ function useTheme(pref: string | undefined) {
     const apply = () => {
       const light = choice === 'light' || (choice === 'system' && mq.matches);
       document.documentElement.dataset.theme = light ? 'light' : 'dark';
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#eef1f8' : '#07080d');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#f2f2f7' : '#000000');
     };
     apply();
     mq.addEventListener('change', apply);
@@ -41,16 +41,6 @@ function useTheme(pref: string | undefined) {
   }, [pref]);
 }
 
-function Ambient() {
-  return (
-    <div className="ambient" aria-hidden="true">
-      <div className="blob b1" />
-      <div className="blob b2" />
-      <div className="blob b3" />
-      <div className="blob b4" />
-    </div>
-  );
-}
 
 export default function App() {
   const { status, data } = useStore();
@@ -82,11 +72,10 @@ export default function App() {
     [tab, go],
   );
 
-  if (status === 'loading') return <Ambient />;
+  if (status === 'loading') return null;
   if (status !== 'unlocked')
     return (
       <>
-        <Ambient />
         <LockScreen />
         <ToastHost />
       </>
@@ -94,7 +83,6 @@ export default function App() {
 
   return (
     <NavCtx.Provider value={nav}>
-      <Ambient />
       <div className="app">
         {tab === 'home' && <Home />}
         {tab === 'spends' && <Spends />}

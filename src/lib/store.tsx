@@ -77,7 +77,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     requestPersistence();
   }, []);
 
+  const flushRef = useRef<() => unknown>(() => undefined);
   const lock = useCallback(() => {
+    flushRef.current();
     dek.current = null;
     const blank = { transactions: [], cards: [], giftCards: [], merchants: [], settings: dataRef.current.settings, logos: {} } as VaultData;
     dataRef.current = blank;
@@ -85,16 +87,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setStatus((s) => (s === 'unlocked' ? 'locked' : s));
   }, []);
 
-  /** Mutate, then persist the full encrypted snapshot. Saves are serialized to avoid races. */
-  const commit = useCallback(async (fn: (d: VaultData) => VaultData) => {
+  /**
+   * Mutate state immediately, then persist the encrypted snapshot shortly after.
+   * Rapid edits (typing in settings) coalesce into one encryption + write.
+   */
+  const pending = useRef<{ timer: number; key: CryptoKey } | null>(null);
+  const flush = useCallback(() => {
+    const p = pending.current;
+    if (!p) return saveChain.current;
+    clearTimeout(p.timer);
+    pending.current = null;
+    const snapshot = dataRef.current;
+    saveChain.current = saveChain.current.then(() => V.saveData(p.key, snapshot)).catch((e) => console.error('Save failed', e));
+    return saveChain.current;
+  }, []);
+
+  const commit = useCallback(async (fn: (d: VaultData) => VaultData, immediate = true) => {
     if (!dek.current) throw new Error('Vault is locked');
     const next = fn(dataRef.current);
     dataRef.current = next;
     setData(next);
-    const key = dek.current;
-    saveChain.current = saveChain.current.then(() => V.saveData(key, next)).catch((e) => console.error('Save failed', e));
-    await saveChain.current;
-  }, []);
+    if (pending.current) clearTimeout(pending.current.timer);
+    pending.current = { key: dek.current, timer: window.setTimeout(flush, immediate ? 0 : 400) };
+    if (immediate) await flush();
+  }, [flush]);
+
+  flushRef.current = flush;
+  useEffect(() => {
+    const onHide = () => { if (document.hidden) flush(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [flush]);
 
   // ---- Auto-lock on inactivity and when hidden ----
   useEffect(() => {
@@ -172,7 +199,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return id;
       },
       deleteMerchant: (id) => commit((d) => ({ ...d, merchants: d.merchants.filter((m) => m.id !== id) })),
-      updateSettings: (patch) => commit((d) => ({ ...d, settings: { ...d.settings, ...patch } })),
+      updateSettings: (patch) => commit((d) => ({ ...d, settings: { ...d.settings, ...patch } }), false),
       setLogo: (key, url) =>
         commit((d) => {
           const logos = { ...d.logos };

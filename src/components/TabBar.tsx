@@ -13,15 +13,11 @@ export function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void
   const idx = TABS.findIndex((t) => t.id === tab);
   return (
     <div className="tabbar-wrap">
-      <nav className="tabbar" aria-label="Main">
-        <span className="tab-lens" style={{ transform: `translateX(${idx * 100}%)`, opacity: tab === 'scan' ? 0 : 1 }} />
+      <nav className="tabbar liquid" aria-label="Main">
+        <span className="tab-lens" style={{ transform: `translateX(${idx * 100}%)` }} />
         {TABS.map(({ id, label, Icon }) => (
-          <button key={id} className={`tab ${tab === id ? 'active' : ''} ${id === 'scan' ? 'scan' : ''}`} onClick={() => onChange(id)} aria-current={tab === id ? 'page' : undefined} aria-label={label}>
-            {id === 'scan' ? (
-              <span className="scan-dot"><Icon /></span>
-            ) : (
-              <Icon />
-            )}
+          <button key={id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => onChange(id)} aria-current={tab === id ? 'page' : undefined}>
+            <Icon strokeWidth={tab === id ? 2.2 : 1.8} />
             <span>{label}</span>
           </button>
         ))}
