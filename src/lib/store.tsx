@@ -68,7 +68,7 @@ function split(d: VaultData): { pub: VaultData; sec: V.Secrets } {
   });
   const giftCards = d.giftCards.map((g) => {
     sec.gifts[g.id] = { code: g.code, pin: g.pin };
-    return { ...g, code: '', pin: '' };
+    return { ...g, codeTail: g.code ? tail(g.code) : g.codeTail, code: '', pin: '' };
   });
   return { pub: { ...d, cards, giftCards }, sec };
 }
@@ -93,6 +93,7 @@ function adjustGiftBalances(giftCards: GiftCard[], uses: Transaction['giftCards'
     return used ? { ...g, balance: Math.max(0, round2(g.balance + sign * used)), updatedAt: Date.now() } : g;
   });
 }
+const tail = (code: string) => code.replace(/[\s-]/g, '').slice(-4);
 const sortTx = (a: Transaction, b: Transaction) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -165,7 +166,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMeta(r.meta);
     setAll(merge(dataRef.current, await V.loadSecure(r.dek)));
     setVault('unlocked');
-  }, []);
+    // Backfill public code tails for gift cards saved before they existed.
+    if (dataRef.current.giftCards.some((g) => g.code && !g.codeTail)) flush();
+  }, [flush]);
 
   const lock = useCallback(() => {
     if (!dek.current) return;
@@ -262,7 +265,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       saveCard: (c) => commit((d) => ({ ...d, cards: upsert(d.cards, { ...c, last4: c.number ? last4(c.number) : c.last4 } as Partial<PaymentCard>) })),
       deleteCard: (id) => commit((d) => ({ ...d, cards: d.cards.filter((c) => c.id !== id) })),
-      saveGiftCard: (g) => commit((d) => ({ ...d, giftCards: upsert(d.giftCards, g as Partial<GiftCard>) })),
+      saveGiftCard: (g) => commit((d) => ({ ...d, giftCards: upsert(d.giftCards, { ...g, codeTail: g.code ? tail(g.code) : g.codeTail } as Partial<GiftCard>) })),
       deleteGiftCard: (id) => commit((d) => ({ ...d, giftCards: d.giftCards.filter((g) => g.id !== id) })),
       saveMerchant: async (m) => {
         const id = m.id ?? dataRef.current.merchants.find((x) => x.vpa && x.vpa.toLowerCase() === m.vpa.toLowerCase())?.id ?? uid();

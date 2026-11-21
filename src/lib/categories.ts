@@ -61,3 +61,9 @@ export function giftBrand(brand: string) {
 }
 export const giftBackground = (color: string) => `linear-gradient(155deg, color-mix(in srgb, ${color} 78%, #ffffff) 0%, ${color} 55%, color-mix(in srgb, ${color} 85%, #000000) 100%)`;
 
+
+/** Short identity for a gift card: “Amazon ••7788”. */
+export const giftName = (g: { brand: string; codeTail?: string; code?: string }) => {
+  const t = g.codeTail || (g.code ? g.code.replace(/[\s-]/g, '').slice(-4) : '');
+  return t ? `${g.brand} ••${t}` : g.brand;
+};

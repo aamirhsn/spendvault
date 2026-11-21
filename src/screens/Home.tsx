@@ -31,7 +31,6 @@ export function Home() {
   const [budgets, setBudgets] = useState(false);
   const [todoSheet, setTodoSheet] = useState(false);
   const [todoEdit, setTodoEdit] = useState<Todo | null>(null);
-  const [todoNew, setTodoNew] = useState(false);
   const openTodos = useMemo(() => sortTodos((data.todos ?? []).filter((t) => !t.done)), [data.todos]);
 
   const today = todayISO();
@@ -127,8 +126,6 @@ export function Home() {
     <div className="screen">
       <AddFab label="Add" items={[
         { label: 'Spend', icon: <IReceipt />, color: 'var(--tint)', onClick: () => nav.newSpend() },
-        { label: 'From bank SMS', icon: <IMessage />, color: '#30b0c7', onClick: nav.pasteMessages },
-        { label: 'To-do', icon: <IChecklist />, color: '#ff9500', onClick: () => setTodoNew(true) },
         { label: 'Gift card', icon: <IGift />, color: '#ff2d55', onClick: () => nav.goAdd('gift') },
         { label: 'Card', icon: <ICard />, color: '#5856d6', onClick: () => nav.goAdd('card') },
       ]} />
@@ -299,7 +296,6 @@ export function Home() {
       <BudgetsSheet open={budgets} onClose={() => setBudgets(false)} />
       {todoSheet && <TodoSheet onClose={() => setTodoSheet(false)} />}
       {todoEdit && <TodoEditor todo={todoEdit} onClose={() => setTodoEdit(null)} />}
-      {todoNew && <TodoEditor onClose={() => setTodoNew(false)} />}
     </div>
   );
 }

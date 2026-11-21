@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
 import type { GiftCard } from '../lib/types';
-import { GIFT_BRANDS, giftBackground, giftBrand } from '../lib/categories';
+import { GIFT_BRANDS, giftBackground, giftBrand, giftName } from '../lib/categories';
 import { daysUntil, money, parseISO, prettyDate, round2 } from '../lib/format';
 import { Logo, hasLogo } from '../lib/logos';
 import { DeleteRow, Empty, FieldRow, Group, NavRow, Segmented, Sheet, copyText, toast, SaveBtn, EditBtn, AddFab } from '../components/ui';
@@ -41,7 +41,7 @@ export function GiftPass({ g, currency, hide, big }: { g: GiftCard; currency: st
         {exp && <span className="exp">{exp}</span>}
       </div>
       <div>
-        <div className="brand">{g.brand}</div>
+        <div className="brand">{giftName(g)}</div>
         <div className="bal num">{money(g.balance, currency, { hide })}</div>
         <div className="pbar"><div style={{ width: `${pct}%` }} /></div>
       </div>
@@ -165,7 +165,7 @@ function GiftDetail({ g, onClose, onEdit }: { g: GiftCard; onClose: () => void; 
           </Group>
         )}
         <div className="group">
-          <button className="cell tint" disabled={g.balance <= 0} style={{ opacity: g.balance > 0 ? 1 : 0.4 }} onClick={() => { onClose(); nav.newSpend({ giftCards: [{ giftCardId: g.id, amount: 0 }], payment: { type: 'giftcard' } }); }}>Spend with this card</button>
+          <button className="cell tint" disabled={g.balance <= 0} style={{ opacity: g.balance > 0 ? 1 : 0.4 }} onClick={() => { onClose(); nav.newSpend({ giftCards: [{ giftCardId: g.id, amount: 0 }], category: 'Shopping' }); }}>Spend with this card</button>
           <button className="cell tint" onClick={async () => { await saveGiftCard({ ...g, archived: !g.archived }); toast(g.archived ? 'Restored' : 'Archived'); onClose(); }}>{g.archived ? 'Unarchive' : 'Archive'}</button>
         </div>
         <DeleteRow label="Delete gift card" onConfirm={async () => { await deleteGiftCard(g.id); toast('Gift card deleted'); onClose(); }} />

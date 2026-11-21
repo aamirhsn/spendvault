@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import type { SpendDraft } from '../lib/nav';
 import type { GiftCardUse, PaymentType, Transaction } from '../lib/types';
-import { CATEGORIES } from '../lib/categories';
-import { money, prettyDate, round2, todayISO } from '../lib/format';
+import { CATEGORIES, giftName } from '../lib/categories';
+import { money, parseISO, prettyDate, round2, todayISO } from '../lib/format';
 import { categoryForMcc } from '../lib/mcc';
 import { CBtn, FieldRow, Group, NavRow, Sheet, Toggle, toast } from '../components/ui';
 import { PAYMENT_LABELS } from '../components/TxnRow';
@@ -38,16 +38,35 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
     Object.fromEntries((init.giftCards ?? []).map((g) => [g.giftCardId, g.amount ? String(g.amount) : ''])),
   );
   const [error, setError] = useState('');
+  // Gift cards chosen before an amount was typed (e.g. “Spend with this card”) follow the amount.
+  const [autoGift, setAutoGift] = useState<Set<string>>(() => new Set((init.giftCards ?? []).filter((g) => !g.amount).map((g) => g.giftCardId)));
 
   const giftOptions = useMemo(
     () =>
       giftCards
         .map((g) => ({ g, available: round2(g.balance + (edit?.giftCards.find((u) => u.giftCardId === g.id)?.amount ?? 0)) }))
-        .filter(({ g, available }) => (!g.archived && available > 0) || gifts[g.id] !== undefined),
-    [giftCards, edit, gifts],
+        .filter(({ g, available }) => (!g.archived && available > 0) || gifts[g.id] !== undefined)
+        .sort((a, b) => Number(gifts[b.g.id] !== undefined) - Number(gifts[a.g.id] !== undefined) || (a.g.expiry || '9999').localeCompare(b.g.expiry || '9999')),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [giftCards, edit],
   );
 
   const amt = Number(amount) || 0;
+  useEffect(() => {
+    if (!autoGift.size) return;
+    setGifts((cur) => {
+      const next = { ...cur };
+      let left = amt;
+      for (const id of autoGift) {
+        const g = giftCards.find((x) => x.id === id);
+        if (!g) continue;
+        const v = Math.max(0, Math.min(g.balance, round2(left)));
+        next[id] = v ? String(v) : '';
+        left -= v;
+      }
+      return next;
+    });
+  }, [amt, autoGift, giftCards]);
   const giftUses: GiftCardUse[] = useGift
     ? Object.entries(gifts).map(([giftCardId, v]) => ({ giftCardId, amount: round2(Number(v) || 0) })).filter((u) => u.amount > 0)
     : [];
@@ -130,6 +149,7 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
     return () => window.removeEventListener('keydown', h);
   });
 
+  const chosenGifts = giftCards.filter((g) => gifts[g.id] !== undefined && (Number(gifts[g.id]) > 0 || autoGift.has(g.id)));
   const display = amount ? Number(amount.split('.')[0] || 0).toLocaleString(settings.currency === 'INR' ? 'en-IN' : undefined) + (amount.includes('.') ? '.' + amount.split('.')[1] : '') : '0';
   const dateLabel = date === todayISO() ? 'Today' : date === yesterday ? 'Yesterday' : prettyDate(date);
   const payLabel = ptype === 'card' ? (selCard ? `${selCard.name || selCard.bank} ••${selCard.last4}` : 'Choose card') : PAYMENT_LABELS[ptype];
@@ -156,7 +176,7 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
           <button className="tagbtn" onClick={() => setPicker('date')}><ICalendar />{dateLabel}</button>
           {merchants.length > 0 && <button className={`tagbtn ${merchant ? '' : 'ghost'}`} onClick={() => setPicker('merchant')}><IStore />{merchant ? merchant.name || merchant.vpa : 'Merchant'}</button>}
           {giftCards.some((g) => !g.archived && g.balance > 0) || useGift ? (
-            <button className={`tagbtn ${giftSum > 0 ? '' : 'ghost'}`} onClick={() => setPicker('gift')}><IGift />{giftSum > 0 ? `${fmt(giftSum)} gift card` : 'Gift card'}</button>
+            <button className={`tagbtn ${useGift && chosenGifts.length ? '' : 'ghost'}`} onClick={() => setPicker('gift')}><IGift />{useGift && chosenGifts.length ? `${chosenGifts.length === 1 ? giftName(chosenGifts[0]) : `${chosenGifts.length} gift cards`}${giftSum > 0 ? ` · ${fmt(giftSum)}` : ''}` : 'Gift card'}</button>
           ) : null}
           <button className={`tagbtn ${notes ? '' : 'ghost'}`} onClick={() => setPicker('note')}><IEdit />{notes ? 'Note' : 'Add note'}</button>
         </div>
@@ -245,11 +265,11 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
                 <div className="cell" key={g.id}>
                   <LogoTile brand={g.brand} size={30} />
                   <span className="grow">
-                    <div className="t ellipsis" style={{ fontSize: 15 }}>{g.brand}</div>
-                    <div className="st" style={{ fontSize: 13 }}>{fmt(available)} available</div>
+                    <div className="t ellipsis" style={{ fontSize: 15, fontWeight: gifts[g.id] ? 600 : 400 }}>{giftName(g)}</div>
+                    <div className="st" style={{ fontSize: 13 }}>{fmt(available)} left{g.expiry ? ` · exp ${parseISO(g.expiry).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}` : ''}</div>
                   </span>
-                  <input inputMode="decimal" placeholder="0" style={{ maxWidth: 90 }} value={gifts[g.id] ?? ''} onChange={(e) => setGifts((s) => ({ ...s, [g.id]: e.target.value.replace(/[^\d.]/g, '') }))} aria-label={`Amount from ${g.brand}`} />
-                  <button type="button" className="textbtn" style={{ fontSize: 15 }} onClick={() => fill(g.id)}>Max</button>
+                  <input inputMode="decimal" placeholder="0" style={{ maxWidth: 90 }} value={gifts[g.id] ?? ''} onChange={(e) => { setAutoGift((a) => { const n = new Set(a); n.delete(g.id); return n; }); setGifts((s) => ({ ...s, [g.id]: e.target.value.replace(/[^\d.]/g, '') })); }} aria-label={`Amount from ${giftName(g)}`} />
+                  <button type="button" className="textbtn" style={{ fontSize: 15 }} onClick={() => { setAutoGift((a) => { const n = new Set(a); n.delete(g.id); return n; }); fill(g.id); }}>Max</button>
                 </div>
               ))}
             </Group>

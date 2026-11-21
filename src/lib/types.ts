@@ -55,6 +55,7 @@ export interface GiftCard {
   brand: string;
   code: string;
   pin: string;
+  codeTail?: string; // last 4 of the code — public, so cards can be told apart while the vault is locked
   value: number; // original face value
   balance: number; // current balance (auto-adjusted by spends)
   expiry: string; // YYYY-MM-DD or ''
