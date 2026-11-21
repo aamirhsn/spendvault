@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNav } from '../lib/nav';
 import { useStore } from '../lib/store';
 import type { CardKind, CardNetwork, PaymentCard, Transaction } from '../lib/types';
 import { FINISHES, cardFinishKey, finishFor, suggestFinish } from '../lib/finishes';
@@ -133,9 +134,13 @@ export function Cards() {
 
 function CardsUnlocked({ onLock }: { onLock: () => void }) {
   const { data } = useStore();
+  const nav = useNav();
   const { cards, settings, transactions } = data;
   const [kind, setKind] = useState<'all' | CardKind>('all');
   const [form, setForm] = useState<{ open: boolean; edit?: PaymentCard }>({ open: false });
+  useEffect(() => {
+    if (nav.intent === 'card') { nav.clearIntent(); setForm({ open: true }); }
+  }, [nav]);
   const [detail, setDetail] = useState<string | null>(null);
   const fmt = (n: number) => money(n, settings.currency, { hide: settings.hideAmounts, decimals: false });
 

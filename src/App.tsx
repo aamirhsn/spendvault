@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from './lib/store';
-import { NavCtx, type Nav, type SpendDraft, type Tab } from './lib/nav';
+import { NavCtx, type Intent, type Nav, type SpendDraft, type Tab } from './lib/nav';
+import { toast } from './components/ui';
 import { TabBar } from './components/TabBar';
 import { ToastHost } from './components/ui';
 import { MigrateScreen, UnlockSheet } from './screens/Lock';
@@ -50,6 +51,7 @@ export default function App() {
   const [form, setForm] = useState<{ open: boolean; draft?: SpendDraft; edit?: Transaction }>({ open: false });
   const [settings, setSettings] = useState(false);
   const [messages, setMessages] = useState<{ open: boolean; text?: string }>({ open: false });
+  const [intent, setIntent] = useState<Intent>(null);
 
   // Bank SMS handed over by an iOS Shortcut: …/spendvault/#sms=<url-encoded message>
   useEffect(() => {
@@ -80,8 +82,25 @@ export default function App() {
       editSpend: (t) => setForm({ open: true, edit: t }),
       openSettings: () => setSettings(true),
       openMessages: (text?: string) => setMessages({ open: true, text }),
+      pasteMessages: () => {
+        // readText() must run inside the tap itself for iOS to allow it.
+        const read = navigator.clipboard?.readText?.();
+        if (!read) return setMessages({ open: true });
+        read
+          .then((t) => {
+            if (!t.trim()) toast('Clipboard is empty — paste the SMS below');
+            setMessages({ open: true, text: t.trim() || undefined });
+          })
+          .catch(() => setMessages({ open: true }));
+      },
+      intent,
+      goAdd: (i) => {
+        setIntent(i);
+        go(i === 'gift' ? 'gifts' : 'cards');
+      },
+      clearIntent: () => setIntent(null),
     }),
-    [tab, go],
+    [tab, go, intent],
   );
 
   if (status === 'loading') return null;

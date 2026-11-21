@@ -206,7 +206,7 @@ function AutomationGuide({ onClose }: { onClose: () => void }) {
           <Group header="1 · Make the shortcut" footer="The Home Screen app keeps its own data, so the shortcut hands over the SMS via the clipboard (cleared after 10 minutes).">
             <Step n={1}>Shortcuts → <b>+</b> → name it <b>Copy SMS for SpendVault</b>.</Step>
             <Step n={2}>Add <b>Copy to Clipboard</b> with <b>Shortcut Input</b>. Tap ▸ → <b>Local Only</b> on, <b>Expire</b> in 10 minutes.</Step>
-            <Step n={3}>Add <b>Show Notification</b>: “Bank SMS copied — open SpendVault and tap Paste”.</Step>
+            <Step n={3}>Add <b>Show Notification</b>: “Bank SMS copied — open SpendVault and tap 💬”.</Step>
           </Group>
         ) : (
           <Group header="1 · Make the shortcut" footer="The message goes after # in the link, which browsers never send to a server.">

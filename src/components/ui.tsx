@@ -178,12 +178,35 @@ export async function copyText(text: string, label = 'Copied') {
   }
 }
 
-/** Floating “+” button that sits above the tab bar. */
-export function AddFab({ label, onClick }: { label: string; onClick: () => void }) {
+export interface FabItem { label: string; icon: ReactNode; color: string; onClick: () => void }
+
+/** Floating “+” above the tab bar. With `items` it expands into a menu of actions. */
+export function AddFab({ label, onClick, items }: { label: string; onClick?: () => void; items?: FabItem[] }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [open]);
+  const toggle = () => (items ? setOpen((o) => !o) : onClick?.());
   return createPortal(
-    <button className="add-fab" onClick={onClick} aria-label={label} title={label}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-    </button>,
+    <>
+      {open && <div className="fab-scrim" onClick={() => setOpen(false)} />}
+      {open && items && (
+        <div className="fab-menu" role="menu">
+          {items.map((it, i) => (
+            <button key={it.label} role="menuitem" className="fab-item" style={{ animationDelay: `${(items.length - 1 - i) * 30}ms` }} onClick={() => { setOpen(false); it.onClick(); }}>
+              <span>{it.label}</span>
+              <span className="fab-ic" style={{ background: it.color }}>{it.icon}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <button className={`add-fab ${open ? 'open' : ''}`} onClick={toggle} aria-label={open ? 'Close menu' : label} aria-expanded={items ? open : undefined} title={label}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+    </>,
     document.body,
   );
 }

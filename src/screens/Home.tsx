@@ -8,7 +8,7 @@ import { TxnRow } from '../components/TxnRow';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
-import { ICalendar, IChecklist, IChevron, IFace, IPie, ISettings } from '../components/Icons';
+import { ICalendar, ICard, IChecklist, IChevron, IFace, IGift, IMessage, IPie, IReceipt, ISettings } from '../components/Icons';
 import { CBtn, NavRow, AddFab } from '../components/ui';
 import { QuickAdd, TodoEditor, TodoRow, TodoSheet, sortTodos } from '../components/Todos';
 import type { Todo } from '../lib/types';
@@ -31,6 +31,7 @@ export function Home() {
   const [budgets, setBudgets] = useState(false);
   const [todoSheet, setTodoSheet] = useState(false);
   const [todoEdit, setTodoEdit] = useState<Todo | null>(null);
+  const [todoNew, setTodoNew] = useState(false);
   const openTodos = useMemo(() => sortTodos((data.todos ?? []).filter((t) => !t.done)), [data.todos]);
 
   const today = todayISO();
@@ -124,11 +125,18 @@ export function Home() {
 
   return (
     <div className="screen">
-      <AddFab label="Add spend" onClick={() => nav.newSpend()} />
+      <AddFab label="Add" items={[
+        { label: 'Spend', icon: <IReceipt />, color: 'var(--tint)', onClick: () => nav.newSpend() },
+        { label: 'From bank SMS', icon: <IMessage />, color: '#30b0c7', onClick: nav.pasteMessages },
+        { label: 'To-do', icon: <IChecklist />, color: '#ff9500', onClick: () => setTodoNew(true) },
+        { label: 'Gift card', icon: <IGift />, color: '#ff2d55', onClick: () => nav.goAdd('gift') },
+        { label: 'Card', icon: <ICard />, color: '#5856d6', onClick: () => nav.goAdd('card') },
+      ]} />
       <div className="wash" style={{ ['--wash' as string]: '#c9dcff' }} />
       <header className="topbar" style={{ minHeight: 44, margin: '0 0 6px' }}>
         <span />
         <div className="actions">
+          <CBtn variant="glass" size="lg" icon={<IMessage />} label="Paste bank SMS" onClick={nav.pasteMessages} />
           <CBtn variant="glass" size="lg" icon={<ISettings />} label="Settings" onClick={nav.openSettings} />
         </div>
       </header>
@@ -291,6 +299,7 @@ export function Home() {
       <BudgetsSheet open={budgets} onClose={() => setBudgets(false)} />
       {todoSheet && <TodoSheet onClose={() => setTodoSheet(false)} />}
       {todoEdit && <TodoEditor todo={todoEdit} onClose={() => setTodoEdit(null)} />}
+      {todoNew && <TodoEditor onClose={() => setTodoNew(false)} />}
     </div>
   );
 }

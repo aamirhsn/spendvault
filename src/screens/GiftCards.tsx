@@ -55,6 +55,10 @@ export function GiftCards() {
   const [filter, setFilter] = useState<Filter>('active');
   const [form, setForm] = useState<{ open: boolean; edit?: GiftCard }>({ open: false });
   const [detail, setDetail] = useState<string | null>(null);
+  const nav = useNav();
+  useEffect(() => {
+    if (nav.intent === 'gift') { nav.clearIntent(); setForm({ open: true }); }
+  }, [nav]);
 
   const list = useMemo(
     () =>

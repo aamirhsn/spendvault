@@ -574,3 +574,17 @@ button.cell:active, a.cell:active { background: var(--fill); }
   box-shadow: 0 10px 24px color-mix(in srgb, var(--tint) 45%, transparent), 0 2px 6px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.35); transition: transform .3s var(--spring); }
 .add-fab svg { width: 28px; height: 28px; }
 .add-fab:active { transform: translateY(var(--tabfix, 0px)) scale(.9); }
+
+/* expanding add menu */
+.add-fab svg { transition: transform .35s var(--spring); }
+.add-fab.open svg { transform: rotate(45deg); }
+.add-fab.open { background: var(--label); color: var(--bg); box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+.fab-scrim { position: fixed; inset: 0; z-index: 48; background: rgba(0,0,0,.28); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: fade .2s var(--ease); }
+.fab-menu { position: fixed; z-index: 49; right: max(18px, calc(50% - 410px + 18px)); bottom: calc(var(--safe-b) + 10px + var(--tabbar-h) + 14px + 70px); transform: translateY(var(--tabfix, 0px));
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.fab-item { display: flex; align-items: center; gap: 12px; animation: fabIn .32s var(--spring) both; }
+.fab-item > span:first-child { padding: 8px 14px; border-radius: 99px; font-size: 15px; font-weight: 600; background: var(--card); color: var(--label); box-shadow: 0 4px 14px rgba(0,0,0,.15); }
+.fab-ic { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.2); margin-right: 6px; }
+.fab-ic svg { width: 22px; height: 22px; }
+.fab-item:active .fab-ic { transform: scale(.9); }
+@keyframes fabIn { from { opacity: 0; transform: translateY(16px) scale(.9); } to { opacity: 1; transform: none; } }

@@ -8,7 +8,7 @@ Pick the one that matches how you open SpendVault:
 
 | You open SpendVault from… | Use | What it does |
 |---|---|---|
-| **Home Screen icon** (recommended) | **Copy SMS for SpendVault** | Copies the SMS (auto-clears after 10 min) and shows a notification. Open SpendVault → Spends → 💬 → **Paste**. |
+| **Home Screen icon** (recommended) | **Copy SMS for SpendVault** | Copies the SMS (auto-clears after 10 min) and shows a notification. Open SpendVault and tap **💬** on Home. |
 | **Safari** | **Log to SpendVault** | Opens SpendVault with the spend ready — tap **Add**. |
 
 > Home Screen web apps keep their data separate from Safari, so a link opened from Shortcuts can't reach the installed app's data — that's why the Home Screen version uses the clipboard.
