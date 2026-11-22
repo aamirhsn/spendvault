@@ -1,13 +1,13 @@
 {
-  "name": "SpendVault",
-  "short_name": "SpendVault",
+  "name": "Fiscus",
+  "short_name": "Fiscus",
   "description": "Private, encrypted spend tracker, card vault, gift card vault and UPI MCC scanner.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#09090c",
-  "theme_color": "#09090c",
+  "background_color": "#fff4ea",
+  "theme_color": "#fff4ea",
   "icons": [
     {
       "src": "icon.svg",

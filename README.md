@@ -1,4 +1,4 @@
-# SpendVault
+# Fiscus
 
 A private, offline-first web app (PWA) for tracking spends, storing credit/debit cards and gift cards, and finding the **MCC of any UPI QR code**. The interface follows Apple's iOS 26 design language: system colours, grouped lists, and Liquid Glass reserved for floating controls.
 
@@ -17,7 +17,7 @@ Everything you enter stays on your device, encrypted. There is no backend, no ac
 
 ## Security model
 
-SpendVault keeps two encrypted tiers in this browser's IndexedDB, both using AES-256-GCM:
+Fiscus keeps two encrypted tiers in this browser's IndexedDB, both using AES-256-GCM:
 
 | Tier | What's in it | Protected by |
 |---|---|---|
@@ -32,11 +32,11 @@ SpendVault keeps two encrypted tiers in this browser's IndexedDB, both using AES
 
 ## Spends from bank SMS
 
-iOS doesn't allow any app or website to read your messages, so SpendVault offers the next best things:
+iOS doesn't allow any app or website to read your messages, so Fiscus offers the next best things:
 
 - **Spends → Messages** (💬): paste one or many bank / UPI / card alerts. Amount, date, merchant / UPI ID and card (matched by last 4 digits) are detected; credits, OTPs and promos are skipped; duplicates are flagged.
 - **Rules** (Settings → SMS Rules): "if the message contains *swiggy* → name *Swiggy*, category *Food & Dining*, paid with …", or ignore matching messages. A starter set is included.
-- **Automation**: an iOS Shortcuts *Message* automation can forward each bank SMS to `…/spendvault/#sms=<message>`; SpendVault opens with the spend ready to confirm. Home Screen web apps keep separate storage from Safari, so if you use the installed app, have the Shortcut copy the SMS and tap **Paste** in the app.
+- **Automation**: an iOS Shortcuts *Message* automation can forward each bank SMS to `…/spendvault/#sms=<message>`; Fiscus opens with the spend ready to confirm. Home Screen web apps keep separate storage from Safari, so if you use the installed app, have the Shortcut copy the SMS and tap **Paste** in the app.
 
 ## Logos
 

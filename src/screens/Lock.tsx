@@ -148,7 +148,7 @@ export function MigrateScreen() {
           <>
             <div className="cbtn tinted" style={{ width: 60, height: 60, margin: '0 auto 14px' }}><IShield width={28} height={28} /></div>
             <h1>One quick update</h1>
-            <p className="muted small" style={{ margin: '0 0 18px', lineHeight: 1.45 }}>SpendVault no longer locks the whole app — only your cards. Unlock once to move your data over.</p>
+            <p className="muted small" style={{ margin: '0 0 18px', lineHeight: 1.45 }}>Fiscus no longer locks the whole app — only your cards. Unlock once to move your data over.</p>
             {kind === 'pin' ? (
               <PinPad title="Enter your PIN" onComplete={run} bio={biometricEnabled ? () => run(null) : undefined} />
             ) : (

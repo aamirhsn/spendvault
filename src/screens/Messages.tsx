@@ -204,20 +204,20 @@ function AutomationGuide({ onClose }: { onClose: () => void }) {
         </div>
         {mode === 'app' ? (
           <Group header="1 · Make the shortcut" footer="The Home Screen app keeps its own data, so the shortcut hands over the SMS via the clipboard (cleared after 10 minutes).">
-            <Step n={1}>Shortcuts → <b>+</b> → name it <b>Copy SMS for SpendVault</b>.</Step>
+            <Step n={1}>Shortcuts → <b>+</b> → name it <b>Copy SMS for Fiscus</b>.</Step>
             <Step n={2}>Add <b>Copy to Clipboard</b> with <b>Shortcut Input</b>. Tap ▸ → <b>Local Only</b> on, <b>Expire</b> in 10 minutes.</Step>
-            <Step n={3}>Add <b>Show Notification</b>: “Bank SMS copied — open SpendVault and tap 💬”.</Step>
+            <Step n={3}>Add <b>Show Notification</b>: “Bank SMS copied — open Fiscus and tap 💬”.</Step>
           </Group>
         ) : (
           <Group header="1 · Make the shortcut" footer="The message goes after # in the link, which browsers never send to a server.">
-            <Step n={1}>Shortcuts → <b>+</b> → name it <b>Log to SpendVault</b>.</Step>
+            <Step n={1}>Shortcuts → <b>+</b> → name it <b>Log to Fiscus</b>.</Step>
             <Step n={2}>Add <b>URL Encode</b> with <b>Shortcut Input</b>.</Step>
             <Step n={3}>Add <b>Open URLs</b>: paste the link below, then insert <b>URL Encoded Text</b> after it.</Step>
             <div className="cell mono" style={{ fontSize: 13, wordBreak: 'break-all' }}>{url}</div>
             <button className="cell tint" onClick={() => copyText(url, 'Link copied')}>Copy link</button>
           </Group>
         )}
-        <Group header="2 · Make the automation" footer="SpendVault always asks before saving. Your SMS Rules fill in names, categories and cards.">
+        <Group header="2 · Make the automation" footer="Fiscus always asks before saving. Your SMS Rules fill in names, categories and cards.">
           <Step n={1}>Shortcuts → <b>Automation</b> → <b>+</b> → <b>Message</b>.</Step>
           <Step n={2}><b>Message Contains</b>: <b>debited</b> → <b>Run Immediately</b>.</Step>
           <Step n={3}>Add <b>Run Shortcut</b> → pick your shortcut → set its input to <b>Shortcut Input</b>.</Step>

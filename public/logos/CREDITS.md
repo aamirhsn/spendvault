@@ -1,8 +1,8 @@
 # Logo credits
 
-Brand logos bundled with SpendVault come from Wikimedia Commons and are marked **public domain** or **CC0** there (typically as simple text/geometric logos below the threshold of originality). Each file was matched to its Commons page by SHA-1 hash.
+Brand logos bundled with Fiscus come from Wikimedia Commons and are marked **public domain** or **CC0** there (typically as simple text/geometric logos below the threshold of originality). Each file was matched to its Commons page by SHA-1 hash.
 
-Logos are trademarks of their respective owners and are used only to identify cards and brands in your personal vault. SpendVault is not affiliated with or endorsed by any of them.
+Logos are trademarks of their respective owners and are used only to identify cards and brands in your personal vault. Fiscus is not affiliated with or endorsed by any of them.
 
 | File | Source | Licence |
 |---|---|---|

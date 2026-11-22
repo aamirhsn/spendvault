@@ -34,8 +34,8 @@ const asArrayBuffer = (b: BufferSource): ArrayBuffer =>
 export async function registerBiometric(prfSalt: Uint8Array): Promise<{ credentialId: Uint8Array; secret: ArrayBuffer }> {
   const cred = (await navigator.credentials.create({
     publicKey: {
-      rp: { name: 'SpendVault' },
-      user: { id: randomBytes(16), name: 'SpendVault vault', displayName: 'SpendVault' },
+      rp: { name: 'Fiscus' },
+      user: { id: randomBytes(16), name: 'Fiscus vault', displayName: 'Fiscus' },
       challenge: randomBytes(32),
       pubKeyCredParams: [
         { type: 'public-key', alg: -7 },

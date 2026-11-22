@@ -95,7 +95,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
 
         <div className="group-f center" style={{ lineHeight: 1.5 }}>
           Stored only on this device, encrypted with AES-256-GCM. No accounts, no servers, no tracking.<br />
-          SpendVault 3.0 · {data.transactions.length} spends · {data.cards.length} cards · {data.giftCards.length} gift cards
+          Fiscus 3.0 · {data.transactions.length} spends · {data.cards.length} cards · {data.giftCards.length} gift cards
         </div>
       </div>
 
@@ -168,7 +168,7 @@ function ExportPanel({ onClose }: { onClose: () => void }) {
         if (pw !== pw2) return setErr('Passwords don’t match.');
         setBusy(true);
         const blob = await V.exportBackup(data, pw);
-        download(blob, `spendvault-backup-${todayISO()}.svault`);
+        download(blob, `fiscus-backup-${todayISO()}.fiscus`);
         setBusy(false);
         toast('Backup downloaded');
         onClose();
@@ -210,7 +210,7 @@ function ImportPanel({ onClose }: { onClose: () => void }) {
       }}>
         <p className="small warn" style={{ margin: 0 }}>Restoring replaces everything currently in this vault.</p>
         <button type="button" className="btn secondary block" onClick={() => fileRef.current?.click()}><IUpload /> {fname || 'Choose backup file'}</button>
-        <input ref={fileRef} className="hidden-input" type="file" accept=".svault,application/json" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setFname(f.name); setText(await f.text()); } }} />
+        <input ref={fileRef} className="hidden-input" type="file" accept=".fiscus,.kosh,.svault,application/json" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setFname(f.name); setText(await f.text()); } }} />
         <input className="input" type="password" placeholder="Backup password" value={pw} onChange={(e) => setPw(e.target.value)} />
         {err && <div className="err">{err}</div>}
         <button className="btn primary block" disabled={!text || !pw || busy}>{busy ? 'Decrypting…' : 'Restore'}</button>
@@ -227,7 +227,7 @@ function CsvPanel({ onClose }: { onClose: () => void }) {
     for (const t of data.transactions) {
       rows.push([t.date, t.description, t.category, String(t.amount), paymentLabel(t, data.cards), String(t.giftCards.reduce((a, g) => a + g.amount, 0)), t.notes]);
     }
-    download(new Blob([rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv' }), `spendvault-spends-${todayISO()}.csv`);
+    download(new Blob([rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv' }), `fiscus-spends-${todayISO()}.csv`);
     toast('CSV downloaded');
     onClose();
   };

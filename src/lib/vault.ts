@@ -265,9 +265,9 @@ export async function importBackup(text: string, password: string): Promise<Vaul
   try {
     file = JSON.parse(text);
   } catch {
-    throw new VaultError('This is not a SpendVault backup file.');
+    throw new VaultError('This is not a Fiscus backup file.');
   }
-  if (file.app !== 'spendvault' || file.format !== 1) throw new VaultError('This is not a SpendVault backup file.');
+  if (file.app !== 'spendvault' || file.format !== 1) throw new VaultError('This is not a Fiscus backup file.');
   const key = await deriveKekFromPasscode(password, fromB64(file.kdf.salt), file.kdf.iterations);
   try {
     const ct = fromB64(file.ct);
