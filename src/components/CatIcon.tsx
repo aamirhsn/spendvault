@@ -15,6 +15,7 @@ const GLYPHS: Record<string, { color: string; g: ReactNode }> = {
   'Personal Care': { color: '#d946ef', g: G(<><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" /><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" /></>) },
   Education: { color: '#0ea5e9', g: G(<><path d="M2.5 9 12 4.5 21.5 9 12 13.5z" /><path d="M6.5 11v4.5c0 1.5 2.5 3 5.5 3s5.5-1.5 5.5-3V11M21.5 9v5" /></>) },
   Rent: { color: '#14b8a6', g: G(<><path d="M3.5 11 12 4l8.5 7" /><path d="M5.5 9.5V20h13V9.5M10 20v-5h4v5" /></>) },
+  Investments: { color: '#0f9d58', g: G(<><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>) },
   'EMI & Loans': { color: '#64748b', g: G(<><path d="M3 9.5 12 4l9 5.5M4 20h16M6 10v7M10 10v7M14 10v7M18 10v7" /></>) },
   'Gifts & Donations': { color: '#e11d48', g: G(<><rect x="3.5" y="9" width="17" height="11.5" rx="1.5" /><path d="M12 9v11.5M3.5 13h17M12 9S10.5 4 8 4a2.5 2.5 0 0 0 0 5zM12 9s1.5-5 4-5a2.5 2.5 0 0 1 0 5z" /></>) },
   Transfers: { color: '#0d9488', g: G(<><path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5" /></>) },

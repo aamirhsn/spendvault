@@ -119,6 +119,9 @@ export const DEFAULT_RULES: Omit<SmsRule, 'id'>[] = [
   { match: 'jio', name: 'Jio', category: 'Bills & Utilities' },
   { match: 'electricity', category: 'Bills & Utilities' },
   { match: 'pharmacy', category: 'Health' },
+  { match: 'zerodha', name: 'Zerodha', category: 'Investments' },
+  { match: 'groww', name: 'Groww', category: 'Investments' },
+  { match: 'mutual fund', category: 'Investments' },
 ];
 export const seedRules = (): SmsRule[] => DEFAULT_RULES.map((r) => ({ ...r, id: uid() }));
 

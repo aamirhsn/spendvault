@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ICheck, IChevron, IClose, IEdit } from './Icons';
 
@@ -150,22 +150,83 @@ export function DeleteRow({ label, confirmLabel, onConfirm }: { label: string; c
 }
 
 // ---- toast ----
-let pushToast: ((msg: string) => void) | null = null;
-export const toast = (msg: string) => pushToast?.(msg);
+type ToastAction = { label: string; run: () => void };
+let pushToast: ((msg: string, action?: ToastAction) => void) | null = null;
+export const toast = (msg: string, action?: ToastAction) => pushToast?.(msg, action);
 export function ToastHost() {
-  const [msg, setMsg] = useState<{ text: string; key: number } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; key: number; action?: ToastAction } | null>(null);
   useEffect(() => {
-    pushToast = (text) => setMsg({ text, key: Date.now() });
+    pushToast = (text, action) => setMsg({ text, key: Date.now(), action });
     return () => {
       pushToast = null;
     };
   }, []);
   useEffect(() => {
     if (!msg) return;
-    const t = setTimeout(() => setMsg(null), 2000);
+    const t = setTimeout(() => setMsg(null), msg.action ? 5000 : 2000);
     return () => clearTimeout(t);
   }, [msg]);
-  return msg ? <div key={msg.key} className="toast liquid" role="status">{msg.text}</div> : null;
+  return msg ? (
+    <div key={msg.key} className="toast liquid" role="status">
+      {msg.text}
+      {msg.action && <button className="toast-act" onClick={() => { msg.action!.run(); setMsg(null); }}>{msg.action.label}</button>}
+    </div>
+  ) : null;
+}
+
+// ---- swipe to delete ----
+let closeOpenRow: (() => void) | null = null;
+/** Row that reveals a Delete action when swiped left; a long swipe deletes straight away. */
+export function SwipeRow({ onDelete, children, label = 'Delete' }: { onDelete: () => void; children: ReactNode; label?: string }) {
+  const [dx, setDx] = useState(0);
+  const [anim, setAnim] = useState(false);
+  const st = useRef({ x: 0, y: 0, base: 0, axis: '' as '' | 'x' | 'y', moved: false, w: 320 });
+  const ref = useRef<HTMLDivElement>(null);
+  const OPEN = -88;
+  const settle = (v: number) => { setAnim(true); setDx(v); };
+  const close = () => settle(0);
+  const remove = () => { setAnim(true); setDx(-(st.current.w + 40)); setTimeout(onDelete, 180); };
+
+  return (
+    <div className="swipe" ref={ref}>
+      {dx < 0 && <button className="swipe-del" onClick={remove}>{label}</button>}
+      <div
+        className="swipe-fg"
+        style={{ transform: `translateX(${dx}px)`, transition: anim ? 'transform .25s var(--ease)' : 'none' }}
+        onPointerDown={(e) => {
+          st.current = { x: e.clientX, y: e.clientY, base: dx, axis: '', moved: false, w: ref.current?.offsetWidth ?? 320 };
+          setAnim(false);
+        }}
+        onPointerMove={(e) => {
+          const s = st.current;
+          if (!e.buttons && e.pointerType === 'mouse') return;
+          const ddx = e.clientX - s.x, ddy = e.clientY - s.y;
+          if (!s.axis) {
+            if (Math.abs(ddx) > 8 && Math.abs(ddx) > Math.abs(ddy) * 1.2) {
+              s.axis = 'x';
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              if (closeOpenRow && closeOpenRow !== close) closeOpenRow();
+            } else if (Math.abs(ddy) > 8) s.axis = 'y';
+          }
+          if (s.axis === 'x') { s.moved = true; setDx(Math.min(0, Math.max(-s.w, s.base + ddx))); }
+        }}
+        onPointerUp={() => {
+          const s = st.current;
+          if (s.axis !== 'x') return;
+          if (dx < -s.w * 0.55) remove();
+          else if (dx < -40) { settle(OPEN); closeOpenRow = close; }
+          else close();
+        }}
+        onPointerCancel={() => close()}
+        onClickCapture={(e) => {
+          // A swipe is not a tap; a tap on an open row closes it.
+          if (st.current.moved || dx < 0) { e.stopPropagation(); e.preventDefault(); st.current.moved = false; if (dx < 0) close(); }
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export async function copyText(text: string, label = 'Copied') {

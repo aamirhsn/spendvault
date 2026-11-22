@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../lib/store';
 import type { Todo } from '../lib/types';
 import { daysUntil, parseISO, todayISO } from '../lib/format';
@@ -107,5 +108,16 @@ export function TodoSheet({ onClose }: { onClose: () => void }) {
       </div>
       {edit && <TodoEditor todo={edit} onClose={() => setEdit(null)} />}
     </Sheet>
+  );
+}
+
+/** Floating to-do button for Home: badge shows open items (orange when some are due). */
+export function TodoFab({ open, due, onClick }: { open: number; due: number; onClick: () => void }) {
+  return createPortal(
+    <button className="add-fab todo-fab" onClick={onClick} aria-label={`To-do list, ${open} open`} title="To-do">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M10 6h10M10 12h10M10 18h10" /><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17" /></svg>
+      {open > 0 && <span className={`fab-badge ${due ? 'due' : ''}`}>{open}</span>}
+    </button>,
+    document.body,
   );
 }

@@ -17,12 +17,15 @@ export const CATEGORIES: Category[] = [
   { name: 'Education', icon: '🎓' },
   { name: 'Rent', icon: '🏠' },
   { name: 'EMI & Loans', icon: '🏦' },
+  { name: 'Investments', icon: '📈' },
   { name: 'Gifts & Donations', icon: '🎁' },
   { name: 'Transfers', icon: '🔄' },
   { name: 'Other', icon: '📦' },
 ];
 
 export const categoryIcon = (name: string) => CATEGORIES.find((c) => c.name === name)?.icon ?? '📦';
+/** True for a user-named category (picked via “Other”). */
+export const isCustomCategory = (name: string) => !CATEGORIES.some((c) => c.name === name);
 
 // Validated categorical palette (fixed order). Charts fold anything past slot 5 into "Other".
 export const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];

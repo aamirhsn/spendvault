@@ -2,6 +2,8 @@ import { money } from '../lib/format';
 import { Logo, findBrand } from '../lib/logos';
 import type { Merchant, PaymentCard, Settings, Transaction } from '../lib/types';
 import { CatIcon } from './CatIcon';
+import { SwipeRow, toast } from './ui';
+import { useStore } from '../lib/store';
 
 export const PAYMENT_LABELS: Record<string, string> = {
   card: 'Card', upi: 'UPI', cash: 'Cash', netbanking: 'Net banking', wallet: 'Wallet', giftcard: 'Gift card only', other: 'Other',
@@ -23,9 +25,9 @@ export function TxnIcon({ t, merchants, size = 40 }: { t: Transaction; merchants
   return <CatIcon name={t.category} size={size} round />;
 }
 
-export function TxnRow({ t, cards, settings, merchants, onClick }: { t: Transaction; cards: PaymentCard[]; settings: Settings; merchants?: Merchant[]; onClick?: () => void }) {
+export function TxnRow({ t, cards, settings, merchants, onClick, onDelete }: { t: Transaction; cards: PaymentCard[]; settings: Settings; merchants?: Merchant[]; onClick?: () => void; onDelete?: () => void }) {
   const gift = t.giftCards.reduce((a, g) => a + g.amount, 0);
-  return (
+  const row = (
     <button className="cell" style={{ ['--inset' as string]: '68px' }} onClick={onClick}>
       <TxnIcon t={t} merchants={merchants} />
       <span className="grow">
@@ -38,4 +40,14 @@ export function TxnRow({ t, cards, settings, merchants, onClick }: { t: Transact
       </span>
     </button>
   );
+  return onDelete ? <SwipeRow onDelete={onDelete}>{row}</SwipeRow> : row;
+}
+
+/** Delete a spend with a 5-second Undo (gift card balances are refunded and re-applied). */
+export function useDeleteSpend() {
+  const { deleteTransaction, saveTransaction } = useStore();
+  return async (t: Transaction) => {
+    await deleteTransaction(t.id);
+    toast('Spend deleted', { label: 'Undo', run: () => { saveTransaction(t); } });
+  };
 }

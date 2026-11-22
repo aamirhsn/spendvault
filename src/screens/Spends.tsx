@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
-import { CATEGORIES } from '../lib/categories';
+import { CATEGORIES, isCustomCategory } from '../lib/categories';
 import { addMonths, money, monthKey, monthLabel, prettyDate, todayISO } from '../lib/format';
-import { TxnRow, paymentLabel } from '../components/TxnRow';
+import { useDeleteSpend, TxnRow, paymentLabel } from '../components/TxnRow';
 import { IBack, IChevron, IMessage, ISearch } from '../components/Icons';
 import { Empty, CBtn, AddFab } from '../components/ui';
 
 export function Spends() {
   const { data } = useStore();
   const nav = useNav();
+  const delSpend = useDeleteSpend();
   const { transactions, cards, settings } = data;
   const [month, setMonth] = useState<string | 'all'>(monthKey(todayISO()));
   const [cat, setCat] = useState<string | null>(null);
@@ -62,8 +63,8 @@ export function Spends() {
         {usedCats.size > 1 && (
           <div className="chips">
             <button className={`chip ${!cat ? 'on' : ''}`} onClick={() => setCat(null)}>All</button>
-            {CATEGORIES.filter((c) => usedCats.has(c.name)).map((c) => (
-              <button key={c.name} className={`chip ${cat === c.name ? 'on' : ''}`} onClick={() => setCat(cat === c.name ? null : c.name)}>{c.icon} {c.name}</button>
+            {[...CATEGORIES.map((c) => c.name).filter((n) => usedCats.has(n)), ...[...usedCats].filter(isCustomCategory)].map((n) => (
+              <button key={n} className={`chip ${cat === n ? 'on' : ''}`} onClick={() => setCat(cat === n ? null : n)}>{n}</button>
             ))}
           </div>
         )}
@@ -75,7 +76,7 @@ export function Spends() {
             {groups.map(([date, list]) => (
               <section key={date}>
                 <div className="date-h"><span>{prettyDate(date)}</span><span className="num">{fmt(list.reduce((a, t) => a + t.amount, 0))}</span></div>
-                <div className="group">{list.map((t) => <TxnRow key={t.id} t={t} cards={cards} merchants={data.merchants} settings={settings} onClick={() => nav.editSpend(t)} />)}</div>
+                <div className="group">{list.map((t) => <TxnRow key={t.id} t={t} cards={cards} merchants={data.merchants} settings={settings} onClick={() => nav.editSpend(t)} onDelete={() => delSpend(t)} />)}</div>
               </section>
             ))}
           </div>

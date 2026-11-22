@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import type { SpendDraft } from '../lib/nav';
 import type { GiftCardUse, PaymentType, Transaction } from '../lib/types';
-import { CATEGORIES, giftName } from '../lib/categories';
+import { CATEGORIES, giftName, isCustomCategory } from '../lib/categories';
 import { money, parseISO, prettyDate, round2, todayISO } from '../lib/format';
 import { categoryForMcc } from '../lib/mcc';
 import { CBtn, FieldRow, Group, NavRow, Sheet, Toggle, toast } from '../components/ui';
@@ -120,7 +120,9 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
   const selCard = cards.find((c) => c.id === cardId);
   const merchant = merchants.find((m) => m.id === merchantId);
   const fmt = (n: number) => money(n, settings.currency);
-  const [picker, setPicker] = useState<null | 'category' | 'pay' | 'date' | 'merchant' | 'gift' | 'note'>(null);
+  const [picker, setPicker] = useState<null | 'category' | 'other' | 'pay' | 'date' | 'merchant' | 'gift' | 'note'>(null);
+  const [otherName, setOtherName] = useState('');
+  const usedCustom = useMemo(() => [...new Set(data.transactions.map((t) => t.category).filter(isCustomCategory))].slice(0, 12), [data.transactions]);
   const [armDelete, setArmDelete] = useState(false);
   const payIcon: Record<string, React.ReactNode> = { card: <ICard />, upi: <IScan />, cash: <IWallet />, netbanking: <IBank />, wallet: <IWallet />, giftcard: <IGift />, other: <IEllipsis /> };
 
@@ -194,13 +196,34 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
       {picker === 'category' && (
         <Sheet open onClose={() => setPicker(null)} title="Category">
           <div className="cat-grid">
-            {CATEGORIES.map((c) => (
-              <button key={c.name} className={`cat-pick ${category === c.name ? 'on' : ''}`} onClick={() => { setCategory(c.name); setPicker(null); }}>
-                <CatIcon name={c.name} size={44} solid={category === c.name} />
-                <span>{c.name}</span>
-              </button>
-            ))}
+            {CATEGORIES.map((c) => {
+              const on = c.name === 'Other' ? category === 'Other' || isCustomCategory(category) : category === c.name;
+              return (
+                <button key={c.name} className={`cat-pick ${on ? 'on' : ''}`} onClick={() => {
+                  if (c.name === 'Other') { setOtherName(isCustomCategory(category) ? category : ''); setPicker('other'); }
+                  else { setCategory(c.name); setPicker(null); }
+                }}>
+                  <CatIcon name={c.name} size={44} solid={on} />
+                  <span>{c.name === 'Other' && isCustomCategory(category) ? category : c.name}</span>
+                </button>
+              );
+            })}
           </div>
+        </Sheet>
+      )}
+
+      {picker === 'other' && (
+        <Sheet open onClose={() => setPicker(null)} title="Other category" actions={<CBtn icon={<ICheck strokeWidth={2.6} />} label="Done" variant="primary" onClick={() => { setCategory(otherName.trim() || 'Other'); setPicker(null); }} />}>
+          <form onSubmit={(e) => { e.preventDefault(); setCategory(otherName.trim() || 'Other'); setPicker(null); }}>
+            <Group footer="Name it yourself, e.g. “Pets” or “Wedding”, or leave it blank to use Other.">
+              <FieldRow icon={<IEdit />} tile="#8e8e93" label="Category name"><input autoFocus placeholder="Optional" maxLength={30} value={otherName} onChange={(e) => setOtherName(e.target.value)} enterKeyHint="done" /></FieldRow>
+            </Group>
+            {usedCustom.length > 0 && (
+              <div className="choice-row" style={{ flexWrap: 'wrap', margin: '14px 0 0', padding: 0 }}>
+                {usedCustom.map((c) => <button type="button" key={c} className={`cchip ${category === c ? 'on' : ''}`} onClick={() => { setCategory(c); setPicker(null); }}>{c}</button>)}
+              </div>
+            )}
+          </form>
         </Sheet>
       )}
 

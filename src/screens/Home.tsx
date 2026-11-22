@@ -4,13 +4,14 @@ import { useNav } from '../lib/nav';
 import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, prettyDate, todayISO } from '../lib/format';
 import { SERIES, SERIES_OTHER } from '../lib/categories';
 import { Bars, Donut, type Point } from '../components/Charts';
-import { TxnRow } from '../components/TxnRow';
+import { useDeleteSpend, TxnRow } from '../components/TxnRow';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
-import { ICalendar, ICard, IChecklist, IChevron, IFace, IGift, IMessage, IPie, IReceipt, ISettings } from '../components/Icons';
-import { CBtn, NavRow, AddFab } from '../components/ui';
-import { QuickAdd, TodoEditor, TodoRow, TodoSheet, sortTodos } from '../components/Todos';
+import { ICalendar, IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
+import { CBtn, NavRow } from '../components/ui';
+import { TodoEditor, TodoFab, TodoSheet, sortTodos } from '../components/Todos';
+import { cardFinishKey, finishFor } from '../lib/finishes';
 import type { Todo } from '../lib/types';
 
 function greeting() {
@@ -23,6 +24,7 @@ const WEEKS = 16;
 export function Home() {
   const { data, biometricEnabled, vault, requestUnlock } = useStore();
   const nav = useNav();
+  const delSpend = useDeleteSpend();
   const { transactions: txns, cards, giftCards, merchants, settings } = data;
   const cur = settings.currency;
   const hide = settings.hideAmounts;
@@ -100,6 +102,18 @@ export function Home() {
         .sort((a, b) => (b.c.overdue ?? 0) - (a.c.overdue ?? 0) || a.days - b.days),
     [cards],
   );
+  const byCard = useMemo(() => {
+    const m = new Map<string, { spent: number; count: number }>();
+    for (const t of txns) {
+      if (monthKey(t.date) !== thisMonth || t.payment.type !== 'card' || !t.payment.cardId) continue;
+      const net = t.amount - t.giftCards.reduce((a, g) => a + g.amount, 0);
+      if (net <= 0) continue;
+      const cur = m.get(t.payment.cardId) ?? { spent: 0, count: 0 };
+      m.set(t.payment.cardId, { spent: cur.spent + net, count: cur.count + 1 });
+    }
+    return cards.filter((c) => c.kind === 'credit' && m.has(c.id)).map((c) => ({ c, ...m.get(c.id)! })).sort((a, b) => b.spent - a.spent);
+  }, [txns, cards, thisMonth]);
+  const cardTotal = byCard.reduce((a, x) => a + x.spent, 0);
   const dueTotal = dues.reduce((a, d) => a + d.owed, 0);
   const expiring = giftCards.filter((g) => !g.archived && g.balance > 0 && g.expiry && daysUntil(parseISO(g.expiry)) >= 0 && daysUntil(parseISO(g.expiry)) <= 30);
 
@@ -124,11 +138,7 @@ export function Home() {
 
   return (
     <div className="screen">
-      <AddFab label="Add" items={[
-        { label: 'Spend', icon: <IReceipt />, color: 'var(--tint)', onClick: () => nav.newSpend() },
-        { label: 'Gift card', icon: <IGift />, color: '#ff2d55', onClick: () => nav.goAdd('gift') },
-        { label: 'Card', icon: <ICard />, color: '#5856d6', onClick: () => nav.goAdd('card') },
-      ]} />
+      <TodoFab open={openTodos.length} due={openTodos.filter((t) => t.due && t.due <= today).length} onClick={() => setTodoSheet(true)} />
       <div className="wash" style={{ ['--wash' as string]: '#c9dcff' }} />
       <header className="topbar" style={{ minHeight: 44, margin: '0 0 6px' }}>
         <span />
@@ -176,22 +186,6 @@ export function Home() {
           <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Use Face ID for your cards" subtitle="Faster than typing your PIN" onClick={nav.openSettings} /></div>
         )}
 
-        <section className="todo-card" aria-label="To-do list">
-          <div className="todo-head">
-            <span className="todo-badge"><IChecklist /></span>
-            <div className="grow">
-              <div className="todo-title">To-do</div>
-              <div className="foot muted">{openTodos.length ? `${openTodos.length} open${openTodos.some((t) => t.due && t.due <= today) ? ' · some due' : ''}` : 'Nothing pending'}</div>
-            </div>
-            {(data.todos ?? []).length > 0 && <button className="link" onClick={() => setTodoSheet(true)}>See all <IChevron width={13} /></button>}
-          </div>
-          <div className="todo-list">
-            {openTodos.slice(0, 5).map((t) => <TodoRow key={t.id} t={t} onEdit={setTodoEdit} />)}
-            <QuickAdd />
-          </div>
-          {openTodos.length > 5 && <div className="foot muted" style={{ padding: '8px 16px 0' }}>+{openTodos.length - 5} more in the full list</div>}
-        </section>
-
         <section>
           <div className="section-label">Budgets <button className="link" onClick={() => setBudgets(true)}>{limitTotal ? 'Edit' : 'Set up'} <IChevron width={13} /></button></div>
           {limitTotal ? (
@@ -226,6 +220,26 @@ export function Home() {
             <div className="group"><NavRow icon={<IPie />} iconBg="var(--tint)" title="Set monthly budgets" subtitle="Overall and per category — Food, Fuel, Shopping…" onClick={() => setBudgets(true)} /></div>
           )}
         </section>
+
+        {byCard.length > 0 && (
+          <section>
+            <div className="section-label">Spend by card · {monthLabel(thisMonth, true)} <button className="link" onClick={() => nav.go('cards')}>Cards <IChevron width={13} /></button></div>
+            <div className="card" style={{ padding: '6px 0' }}>
+              {byCard.map(({ c, spent, count }) => (
+                <div key={c.id} className="cell" style={{ ['--inset' as string]: '66px', display: 'grid', gridTemplateColumns: 'auto 1fr auto', rowGap: 6 }}>
+                  <span className="mini-card" style={{ background: finishFor(cardFinishKey(c)).bg, width: 38, height: 25, gridRow: 'span 2' }} />
+                  <span className="ellipsis" style={{ fontWeight: 500 }}>{c.name || c.bank} <span className="muted">••{c.last4}</span></span>
+                  <b className="num" style={{ textAlign: 'right' }}>{fmt(spent)}</b>
+                  <div className="bar" style={{ gridColumn: '2 / 4', height: 5 }}><div style={{ width: `${(spent / byCard[0].spent) * 100}%`, background: 'var(--s1)' }} /></div>
+                  <span />
+                  <span className="foot muted" style={{ gridColumn: '2 / 4', marginTop: -2 }}>
+                    {count} spend{count === 1 ? '' : 's'} · {Math.round((spent / cardTotal) * 100)}% of card spends{c.creditLimit ? ` · ${((spent / c.creditLimit) * 100).toFixed(1)}% of limit` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {(dues.length > 0 || expiring.length > 0) && (
           <section>
@@ -284,7 +298,7 @@ export function Home() {
                     <b style={{ fontSize: 15 }}>{prettyDate(date)}</b>
                     <span className="foot muted num">{fmt(list.reduce((a, t) => a + t.amount, 0))}</span>
                   </div>
-                  {list.map((t) => <TxnRow key={t.id} t={t} cards={cards} merchants={merchants} settings={settings} onClick={() => nav.editSpend(t)} />)}
+                  {list.map((t) => <TxnRow key={t.id} t={t} cards={cards} merchants={merchants} settings={settings} onClick={() => nav.editSpend(t)} onDelete={() => delSpend(t)} />)}
                 </div>
               ))}
             </div>

@@ -163,7 +163,7 @@ const T: Record<string, [string, string]> = {
   '6012': ['Financial Institutions – Merchandise & Services', 'Financial'],
   '6050': ['Quasi Cash – Financial Institutions', 'Financial'],
   '6051': ['Quasi Cash – Non-financial (Crypto, Forex)', 'Financial'],
-  '6211': ['Securities Brokers & Dealers', 'Financial'],
+  '6211': ['Securities Brokers & Dealers', 'Investments'],
   '6300': ['Insurance Sales & Premiums', 'Financial'],
   '6513': ['Real Estate Agents & Rentals', 'Rent'],
   '6529': ['Remote Stored Value Load – Financial', 'Financial'],
@@ -318,6 +318,7 @@ export function categoryForMcc(code: string): string | undefined {
     'Personal Care': 'Personal Care',
     Transfers: 'Transfers',
     Financial: 'Transfers',
+    Investments: 'Investments',
   };
   return g ? map[g] ?? 'Other' : undefined;
 }
