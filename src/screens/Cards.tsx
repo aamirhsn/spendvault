@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNav } from '../lib/nav';
 import { useStore } from '../lib/store';
 import type { CardKind, CardNetwork, PaymentCard, Transaction } from '../lib/types';
@@ -118,13 +118,17 @@ function cycleSpend(c: PaymentCard, txns: Transaction[]) {
 
 export function Cards() {
   const { vault, lock } = useStore();
-  if (vault !== 'unlocked') {
+  // Stay on the gate until it reports done (it may still be offering Face ID after a new PIN).
+  const [gate, setGate] = useState(vault !== 'unlocked');
+  useEffect(() => { if (vault !== 'unlocked') setGate(true); }, [vault]);
+  const finish = useCallback(() => setGate(false), []);
+  if (gate || vault !== 'unlocked') {
     return (
       <div className="screen">
         <div className="wash" style={{ ['--wash' as string]: '#c4eedb' }} />
         <header className="topbar"><h1>Cards</h1></header>
         <div className="card" style={{ padding: '22px 12px 26px', maxWidth: 420, margin: '0 auto' }}>
-          <VaultGate />
+          <VaultGate onDone={finish} />
         </div>
       </div>
     );
@@ -294,13 +298,13 @@ function CardDetail({ c, cycle, onClose, onEdit }: { c: PaymentCard; cycle: numb
         {c.kind === 'credit' && (
           <div className="group">
             <button className="cell tint" onClick={() => setDues(true)}>Update dues</button>
-            <button className="cell tint" disabled={!((c.totalDue ?? 0) + (c.overdue ?? 0))} style={{ opacity: (c.totalDue ?? 0) + (c.overdue ?? 0) ? 1 : 0.4 }} onClick={async () => { await saveCard({ ...c, totalDue: 0, minDue: 0, overdue: 0, lastPaid: todayISO() }); toast('Marked as paid'); }}>Mark as paid</button>
+            <button className="cell tint" disabled={!((c.totalDue ?? 0) + (c.overdue ?? 0))} style={{ opacity: (c.totalDue ?? 0) + (c.overdue ?? 0) ? 1 : 0.4 }} onClick={async () => { await saveCard({ ...c, totalDue: 0, minDue: 0, overdue: 0, lastPaid: todayISO() }); toast('Marked as paid', { detail: 'Dues for this card are now ₹0.' }); }}>Mark as paid</button>
           </div>
         )}
 
         {c.notes && <Group header="Notes"><div className="cell" style={{ whiteSpace: 'pre-wrap' }}>{c.notes}</div></Group>}
         <div className="group-f" style={{ marginTop: -12 }}>{txCount} spend{txCount === 1 ? '' : 's'} logged on this card</div>
-        <DeleteRow label="Delete card" onConfirm={async () => { await deleteCard(c.id); toast('Card deleted'); onClose(); }} />
+        <DeleteRow label="Delete card" onConfirm={async () => { await deleteCard(c.id); toast('Card deleted', { kind: 'info' }); onClose(); }} />
       </div>
       {dues && <DuesSheet c={c} onClose={() => setDues(false)} />}
       {element}
@@ -392,7 +396,7 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
       lastPaid: edit?.lastPaid,
       notes: notes.trim(),
     });
-    toast(edit ? 'Card updated' : 'Card added');
+    toast(edit ? 'Card updated' : 'Card added', edit ? undefined : { detail: 'Stored encrypted behind your PIN.' });
     onClose();
   };
 
@@ -433,7 +437,7 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
           {art && <button type="button" className="cell danger" style={{ justifyContent: 'flex-start' }} onClick={() => setArt('')}>Remove photo</button>}
           <input ref={artRef} type="file" accept="image/*" className="hidden-input" onChange={async (e) => {
             const f = e.target.files?.[0]; e.target.value = '';
-            if (f) { try { setArt(await fileToDataUrl(f, 1000, 'image/jpeg')); } catch { toast('Could not read that image'); } }
+            if (f) { try { setArt(await fileToDataUrl(f, 1000, 'image/jpeg')); } catch { toast('Couldn’t use that photo', { kind: 'error', detail: 'Try another image of your card.' }); } }
           }} />
           {bank.trim() && <LogoPicker name={bank} label="Bank logo" />}
         </Group>

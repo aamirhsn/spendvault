@@ -166,9 +166,9 @@ function GiftDetail({ g, onClose, onEdit }: { g: GiftCard; onClose: () => void; 
         )}
         <div className="group">
           <button className="cell tint" disabled={g.balance <= 0} style={{ opacity: g.balance > 0 ? 1 : 0.4 }} onClick={() => { onClose(); nav.newSpend({ giftCards: [{ giftCardId: g.id, amount: 0 }], category: 'Shopping' }); }}>Spend with this card</button>
-          <button className="cell tint" onClick={async () => { await saveGiftCard({ ...g, archived: !g.archived }); toast(g.archived ? 'Restored' : 'Archived'); onClose(); }}>{g.archived ? 'Unarchive' : 'Archive'}</button>
+          <button className="cell tint" onClick={async () => { await saveGiftCard({ ...g, archived: !g.archived }); toast(g.archived ? 'Moved back to Active' : 'Moved to Archived', { kind: 'info' }); onClose(); }}>{g.archived ? 'Unarchive' : 'Archive'}</button>
         </div>
-        <DeleteRow label="Delete gift card" onConfirm={async () => { await deleteGiftCard(g.id); toast('Gift card deleted'); onClose(); }} />
+        <DeleteRow label="Delete gift card" onConfirm={async () => { await deleteGiftCard(g.id); toast('Gift card deleted', { kind: 'info' }); onClose(); }} />
       </div>
       {element}
     </Sheet>

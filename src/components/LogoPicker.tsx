@@ -33,9 +33,9 @@ export function LogoPicker({ name, label }: { name: string; label: string }) {
           if (!f) return;
           try {
             await setLogo(key, await fileToDataUrl(f));
-            toast(`Logo saved for ${name}`);
+            toast('Logo updated', { detail: `Used for every ${name} card.` });
           } catch {
-            toast('Could not read that image');
+            toast('Couldn’t use that image', { kind: 'error', detail: 'Try a PNG or JPG file.' });
           }
         }}
       />

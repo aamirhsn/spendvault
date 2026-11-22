@@ -92,7 +92,7 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
 
   const save = async () => {
     setError('');
-    if (!(amt > 0)) { setError('Enter an amount'); return toast('Enter an amount'); }
+    if (!(amt > 0)) { setError('Enter an amount'); return toast('Enter an amount first', { kind: 'warn' }); }
     if (ptype === 'card' && !cardId) return setError('Choose a card, or add one in the Cards tab.');
     for (const u of giftUses) {
       const opt = giftOptions.find((o) => o.g.id === u.giftCardId);
@@ -159,8 +159,8 @@ export function SpendForm({ draft, edit, onClose }: { draft?: SpendDraft; edit?:
   return (
     <Sheet open onClose={onClose} title={edit ? 'Edit Spend' : 'New Spend'}
       actions={edit ? <CBtn icon={<ITrash />} label={armDelete ? 'Tap again to delete' : 'Delete'} variant="danger" onClick={async () => {
-        if (!armDelete) { setArmDelete(true); toast('Tap again to delete'); return; }
-        await deleteTransaction(edit.id); toast('Spend deleted'); onClose();
+        if (!armDelete) { setArmDelete(true); toast('Tap 🗑 again to delete', { kind: 'warn' }); return; }
+        await deleteTransaction(edit.id); toast('Spend deleted', { kind: 'info' }); onClose();
       }} /> : undefined}>
       <div className="entry">
         <div className="entry-amount" style={{ ['--hc' as string]: categoryColor(category) }}>

@@ -9,7 +9,7 @@ import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
 import { ICalendar, IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
-import { CBtn, NavRow } from '../components/ui';
+import { CBtn, NavRow, bioName } from '../components/ui';
 import { TodoEditor, TodoFab, TodoSheet, sortTodos } from '../components/Todos';
 import { cardFinishKey, finishFor } from '../lib/finishes';
 import type { Todo } from '../lib/types';
@@ -180,10 +180,10 @@ export function Home() {
         </div>
 
         {vault === 'none' && (data.cards.length > 0 || data.giftCards.length > 0) && (
-          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Protect your cards with a PIN" subtitle="Card numbers and gift codes stay behind PIN / Face ID" onClick={() => requestUnlock('Create a PIN for your cards')} /></div>
+          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Protect your cards with a PIN" subtitle="Keeps card numbers and gift codes private" onClick={() => requestUnlock('Create a PIN for your cards')} /></div>
         )}
         {vault !== 'none' && !biometricEnabled && (
-          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Use Face ID for your cards" subtitle="Faster than typing your PIN" onClick={nav.openSettings} /></div>
+          <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title={`Use ${bioName()} for your cards`} subtitle="Faster than typing your PIN" onClick={nav.openSettings} /></div>
         )}
 
         <section>

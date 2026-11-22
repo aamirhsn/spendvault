@@ -41,17 +41,17 @@ export function MessagesSheet({ initialText, onClose }: { initialText?: string; 
   const paste = async () => {
     try {
       const t = await navigator.clipboard.readText();
-      if (!t.trim()) return toast('Clipboard is empty');
+      if (!t.trim()) return toast('Nothing to paste', { kind: 'info', detail: 'Copy a bank SMS first.' });
       setText((cur) => (cur.trim() ? `${cur.trim()}\n\n${t.trim()}` : t.trim()));
     } catch {
-      toast('Allow paste, or long-press the box and choose Paste');
+      toast('Paste wasn’t allowed', { kind: 'info', detail: 'Long-press the box and choose Paste instead.' });
     }
   };
 
   const add = async () => {
     const items = chosen.map(({ _hash, _parsed, _ignored, _dupe, ...t }) => ({ ...t, category: cats[_hash] ?? t.category }));
     await saveTransactions(items, chosen.map((d) => d._hash));
-    toast(`${items.length} spend${items.length === 1 ? '' : 's'} added`);
+    toast(`${items.length} spend${items.length === 1 ? '' : 's'} added`, { detail: 'From your bank messages.' });
     onClose();
   };
 
@@ -143,7 +143,7 @@ function RuleEditor({ rule, onClose, onSave, onDelete }: { rule: SmsRule; onClos
   const [r, setR] = useState(rule);
   const set = (p: Partial<SmsRule>) => setR((x) => ({ ...x, ...p }));
   return (
-    <Sheet open onClose={onClose} title="Rule" actions={<SaveBtn onClick={() => r.match.trim() ? onSave({ ...r, match: r.match.trim() }) : toast('Enter a keyword')} />}>
+    <Sheet open onClose={onClose} title="Rule" actions={<SaveBtn onClick={() => r.match.trim() ? onSave({ ...r, match: r.match.trim() }) : toast('Add a keyword first', { kind: 'warn' })} />}>
       <div className="stack-lg">
         <Group footer="Matches anywhere in the message, the merchant or the UPI ID. Not case-sensitive.">
           <FieldRow label="If message has"><input placeholder="e.g. swiggy" value={r.match} onChange={(e) => set({ match: e.target.value })} autoFocus={!rule.match} /></FieldRow>

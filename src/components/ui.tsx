@@ -151,28 +151,53 @@ export function DeleteRow({ label, confirmLabel, onConfirm }: { label: string; c
 
 // ---- toast ----
 type ToastAction = { label: string; run: () => void };
-let pushToast: ((msg: string, action?: ToastAction) => void) | null = null;
-export const toast = (msg: string, action?: ToastAction) => pushToast?.(msg, action);
+type ToastKind = 'success' | 'info' | 'warn' | 'error';
+export interface ToastOpts { kind?: ToastKind; detail?: string; action?: ToastAction }
+type ToastMsg = { title: string; key: number } & ToastOpts;
+let pushToast: ((m: ToastMsg) => void) | null = null;
+/** Show a notification. `opts` can also be a bare action, e.g. { label: 'Undo', run }. */
+export const toast = (title: string, opts?: ToastOpts | ToastAction) => {
+  const o: ToastOpts = opts && 'run' in opts ? { action: opts, kind: 'info' } : (opts ?? {});
+  pushToast?.({ title, key: Date.now(), kind: o.kind ?? 'success', detail: o.detail, action: o.action });
+};
+const TOAST_ICON: Record<ToastKind, ReactNode> = {
+  success: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  info: <><path d="M12 11v6" /><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none" /></>,
+  warn: <><path d="M12 7v6" /><circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" /></>,
+  error: <path d="M7 7l10 10M17 7L7 17" />,
+};
 export function ToastHost() {
-  const [msg, setMsg] = useState<{ text: string; key: number; action?: ToastAction } | null>(null);
+  const [msg, setMsg] = useState<ToastMsg | null>(null);
   useEffect(() => {
-    pushToast = (text, action) => setMsg({ text, key: Date.now(), action });
-    return () => {
-      pushToast = null;
-    };
+    pushToast = setMsg;
+    return () => { pushToast = null; };
   }, []);
   useEffect(() => {
     if (!msg) return;
-    const t = setTimeout(() => setMsg(null), msg.action ? 5000 : 2000);
+    const t = setTimeout(() => setMsg(null), msg.action ? 5000 : msg.detail ? 3600 : 2400);
     return () => clearTimeout(t);
   }, [msg]);
-  return msg ? (
-    <div key={msg.key} className="toast liquid" role="status">
-      {msg.text}
-      {msg.action && <button className="toast-act" onClick={() => { msg.action!.run(); setMsg(null); }}>{msg.action.label}</button>}
+  if (!msg) return null;
+  const kind = msg.kind ?? 'success';
+  return (
+    <div key={msg.key} className={`toast liquid t-${kind}`} role={kind === 'error' ? 'alert' : 'status'} onClick={() => !msg.action && setMsg(null)}>
+      <span className="toast-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round">{TOAST_ICON[kind]}</svg></span>
+      <span className="toast-txt">
+        <b>{msg.title}</b>
+        {msg.detail && <span>{msg.detail}</span>}
+      </span>
+      {msg.action && <button className="toast-act" onClick={(e) => { e.stopPropagation(); msg.action!.run(); setMsg(null); }}>{msg.action.label}</button>}
     </div>
-  ) : null;
+  );
 }
+
+/** “Face ID” on iPhone/iPad, “Touch ID” on Mac, otherwise “fingerprint / face unlock”. */
+export const bioName = () => {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'Face ID';
+  if (/Macintosh/.test(ua)) return 'Touch ID';
+  return 'Fingerprint unlock';
+};
 
 // ---- swipe to delete ----
 let closeOpenRow: (() => void) | null = null;
@@ -232,10 +257,10 @@ export function SwipeRow({ onDelete, children, label = 'Delete' }: { onDelete: (
 export async function copyText(text: string, label = 'Copied') {
   try {
     await navigator.clipboard.writeText(text);
-    toast(`${label} · clears in 30s`);
+    toast(label, { detail: 'Clipboard clears in 30 seconds.' });
     setTimeout(() => navigator.clipboard.writeText('').catch(() => {}), 30_000);
   } catch {
-    toast('Copy failed');
+    toast('Couldn’t copy', { kind: 'error', detail: 'Please try again.' });
   }
 }
 

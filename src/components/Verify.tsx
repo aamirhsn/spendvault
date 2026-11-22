@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useStore } from '../lib/store';
 import { verifyBiometric, verifyPasscode } from '../lib/vault';
-import { Sheet } from './ui';
+import { Sheet, bioName } from './ui';
 import { IFace } from './Icons';
 
 const GRACE_MS = 60_000;
@@ -56,7 +56,7 @@ export function useVerify() {
         onSubmit={async (e) => {
           e.preventDefault();
           if (await verifyPasscode(code)) finish(true);
-          else setErr('Incorrect passcode');
+          else setErr('Wrong PIN — try again');
         }}
       >
         <p className="small muted" style={{ margin: 0 }}>Enter your PIN to reveal sensitive details.</p>
@@ -64,8 +64,8 @@ export function useVerify() {
         {err && <div className="err">{err}</div>}
         <button className="btn primary block" disabled={!code}>Verify</button>
         {biometricEnabled && (
-          <button type="button" className="btn secondary block" onClick={async () => { try { if (await verifyBiometric()) finish(true); } catch { setErr('Biometric check failed'); } }}>
-            <IFace /> Try biometrics again
+          <button type="button" className="btn secondary block" onClick={async () => { try { if (await verifyBiometric()) finish(true); } catch { setErr(`${bioName()} didn’t work — use your PIN`); } }}>
+            <IFace /> Use {bioName()}
           </button>
         )}
       </form>

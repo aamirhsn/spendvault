@@ -76,14 +76,15 @@ export async function unlockWithPasscode(passcode: string) {
   if (!meta) throw new VaultError('No vault found.');
   if (Date.now() < meta.lockoutUntil) {
     const secs = Math.ceil((meta.lockoutUntil - Date.now()) / 1000);
-    throw new VaultError(`Too many attempts. Try again in ${secs}s.`);
+    throw new VaultError(`Too many tries — wait ${secs}s`);
   }
   const raw = await unwrapWithPasscode(meta, passcode);
   if (!raw) {
     meta.failedAttempts += 1;
     meta.lockoutUntil = Date.now() + lockoutMs(meta.failedAttempts);
     await idbSet(META_KEY, meta);
-    throw new VaultError('Incorrect passcode.');
+    const wait = Math.ceil(lockoutMs(meta.failedAttempts) / 1000);
+    throw new VaultError(wait ? `Wrong PIN — try again in ${wait}s` : meta.failedAttempts >= 3 ? `Wrong PIN — ${5 - meta.failedAttempts} ${5 - meta.failedAttempts === 1 ? 'try' : 'tries'} left before a short wait` : 'Wrong PIN — try again');
   }
   meta.failedAttempts = 0;
   meta.lockoutUntil = 0;

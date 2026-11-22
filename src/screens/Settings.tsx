@@ -4,7 +4,7 @@ import * as V from '../lib/vault';
 import { platformAuthenticatorAvailable } from '../lib/webauthn';
 import { todayISO } from '../lib/format';
 import type { Settings } from '../lib/types';
-import { FieldRow, Group, NavRow, Sheet, Toggle, toast } from '../components/ui';
+import { FieldRow, Group, NavRow, Sheet, Toggle, bioName, toast } from '../components/ui';
 import { BudgetsSheet } from '../components/Budgets';
 import { money } from '../lib/format';
 import { paymentLabel } from '../components/TxnRow';
@@ -61,21 +61,21 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
           <div className="cell"><span className="grow">Hide amounts</span><Toggle label="Hide amounts" on={s.hideAmounts} onChange={(v) => set({ hideAmounts: v })} /></div>
         </Group>
 
-        <Group header="Card vault" footer={vault === 'none' ? 'Your card numbers, CVVs and gift card codes are protected by a 6-digit PIN. Everything else opens without one.' : bioAvail === false && !biometricEnabled ? 'This browser has no Face ID / Touch ID available.' : 'Only the Cards tab and gift card codes ask for your PIN or Face ID.'}>
+        <Group header="Card vault" footer={vault === 'none' ? 'Your card numbers, CVVs and gift card codes are protected by a 6-digit PIN. Everything else opens without one.' : bioAvail === false && !biometricEnabled ? `${bioName()} isn’t available in this browser.` : `Only the Cards tab and gift card codes ask for your PIN or ${bioName()}.`}>
           {vault === 'none' ? (
             <NavRow icon={<IKey />} iconBg="var(--orange)" title="Set Up PIN" onClick={() => requestUnlock('Create a PIN for your cards')} />
           ) : (
             <>
-              <NavRow icon={<IFace />} iconBg="var(--green)" title="Face ID / Touch ID" right={<Toggle label="Biometric unlock" on={biometricEnabled} onChange={async (on) => {
+              <NavRow icon={<IFace />} iconBg="var(--green)" title={bioName()} right={<Toggle label={bioName()} on={biometricEnabled} onChange={async (on) => {
                 if (on) setPanel('bio');
-                else { await V.disableBiometric(); await store.refreshMeta(); toast('Face ID / Touch ID turned off'); }
+                else { await V.disableBiometric(); await store.refreshMeta(); toast(`${bioName()} turned off`, { kind: 'info', detail: 'Your PIN still opens your cards.' }); }
               }} />} />
               <NavRow icon={<ITimer />} iconBg="var(--indigo)" title="Lock Cards After" right={
                 <select style={{ flex: 'none', width: 'auto' }} value={s.autoLockMinutes} onChange={(e) => set({ autoLockMinutes: Number(e.target.value) })} aria-label="Lock cards after">
                   {LOCKS.map((m) => <option key={m} value={m}>{m ? `${m} min` : 'Never'}</option>)}
                 </select>} />
               <NavRow icon={<IKey />} iconBg="var(--orange)" title="Change PIN" onClick={() => setPanel('passcode')} />
-              {vault === 'unlocked' && <NavRow icon={<ILock />} iconBg="var(--gray)" title="Lock Cards Now" onClick={() => { lock(); toast('Cards locked'); }} />}
+              {vault === 'unlocked' && <NavRow icon={<ILock />} iconBg="var(--gray)" title="Lock Cards Now" onClick={() => { lock(); toast('Cards locked', { kind: 'info' }); }} />}
             </>
           )}
         </Group>
@@ -115,19 +115,20 @@ function BioPanel({ onClose }: { onClose: () => void }) {
   const { refreshMeta } = useStore();
   return (
     <Sheet open onClose={onClose} title="">
-      <PinPad title="Enter your PIN" subtitle="Then approve the Face ID / Touch ID prompt" onComplete={async (pin) => {
+      <PinPad title="Enter your PIN" subtitle={`Then approve the ${bioName()} prompt`} onComplete={async (pin) => {
+        if (!(await V.verifyPasscode(pin))) return 'Wrong PIN — try again';
         try {
           await V.enableBiometric(pin);
           await refreshMeta();
-          toast('Face ID / Touch ID turned on');
-          onClose();
-          return null;
+          toast(`${bioName()} turned on`, { detail: 'Use it to open your cards.' });
         } catch (e) {
           const m = e instanceof Error ? e.message : String(e);
-          if (m === 'PRF_UNSUPPORTED') return 'This browser can’t use biometrics for encryption. Try Safari 18+ or Chrome.';
-          if (/NotAllowed/i.test(m)) return 'Face ID / Touch ID was cancelled';
-          return m;
+          if (m === 'PRF_UNSUPPORTED') toast(`${bioName()} isn’t available here`, { kind: 'info', detail: 'This browser can’t use it to protect data. Your PIN still works.' });
+          else if (/NotAllowed|cancel|abort/i.test(m) || (e instanceof Error && e.name === 'NotAllowedError')) toast(`${bioName()} not turned on`, { kind: 'info', detail: 'You can try again anytime.' });
+          else toast(`Couldn’t turn on ${bioName()}`, { kind: 'error', detail: 'Please try again.' });
         }
+        onClose();
+        return null;
       }} />
     </Sheet>
   );
@@ -170,7 +171,7 @@ function ExportPanel({ onClose }: { onClose: () => void }) {
         const blob = await V.exportBackup(data, pw);
         download(blob, `fiscus-backup-${todayISO()}.fiscus`);
         setBusy(false);
-        toast('Backup downloaded');
+        toast('Backup saved', { detail: 'Keep the file and its password somewhere safe.' });
         onClose();
       }}>
         <p className="small muted" style={{ margin: 0 }}>Choose a backup password. The file is AES-256 encrypted and can be restored on any device with this password.</p>
@@ -200,7 +201,7 @@ function ImportPanel({ onClose }: { onClose: () => void }) {
         try {
           const d = await V.importBackup(text, pw);
           await replaceAll(d);
-          toast('Backup restored');
+          toast('Backup restored', { detail: 'All your data is back.' });
           onClose();
         } catch (e) {
           setErr(e instanceof Error ? e.message : 'Restore failed');
@@ -228,7 +229,7 @@ function CsvPanel({ onClose }: { onClose: () => void }) {
       rows.push([t.date, t.description, t.category, String(t.amount), paymentLabel(t, data.cards), String(t.giftCards.reduce((a, g) => a + g.amount, 0)), t.notes]);
     }
     download(new Blob([rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv' }), `fiscus-spends-${todayISO()}.csv`);
-    toast('CSV downloaded');
+    toast('CSV saved', { kind: 'warn', detail: 'This file isn’t encrypted — store it carefully.' });
     onClose();
   };
   return (

@@ -67,7 +67,7 @@ export function TodoEditor({ todo, onClose }: { todo?: Todo; onClose: () => void
   const [due, setDue] = useState(todo?.due ?? '');
   const [notes, setNotes] = useState(todo?.notes ?? '');
   const save = async () => {
-    if (!title.trim()) return toast('Give it a title');
+    if (!title.trim()) return toast('Add a title first', { kind: 'warn' });
     await saveTodo({ id: todo?.id, title: title.trim(), due: due || undefined, notes: notes.trim() || undefined, done: todo?.done ?? false });
     onClose();
   };

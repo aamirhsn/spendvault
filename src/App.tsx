@@ -88,7 +88,7 @@ export default function App() {
         if (!read) return setMessages({ open: true });
         read
           .then((t) => {
-            if (!t.trim()) toast('Clipboard is empty — paste the SMS below');
+            if (!t.trim()) toast('Nothing to paste', { kind: 'info', detail: 'Copy a bank SMS first, then tap 💬 again.' });
             setMessages({ open: true, text: t.trim() || undefined });
           })
           .catch(() => setMessages({ open: true }));

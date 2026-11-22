@@ -160,7 +160,7 @@ export function Scanner() {
       await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
       setTorch(next);
     } catch {
-      toast('Torch not available');
+      toast('Flashlight unavailable', { kind: 'info', detail: 'This camera doesn’t support it.' });
     }
   };
 
@@ -170,9 +170,9 @@ export function Scanner() {
     try {
       const text = await decodeFile(f);
       if (text) handleText(text);
-      else toast('No QR code found in that image');
+      else toast('No QR code found', { kind: 'warn', detail: 'Try a closer, sharper photo.' });
     } catch {
-      toast('Could not read that image');
+      toast('Couldn’t read that image', { kind: 'error', detail: 'Try a clearer photo of the QR code.' });
     }
   };
 
@@ -295,7 +295,7 @@ export function Scanner() {
           m={selected}
           onClose={() => setSelected(null)}
           onSave={async (patch) => { await saveMerchant({ ...selected, ...patch }); toast('Merchant updated'); setSelected(null); }}
-          onDelete={async () => { await deleteMerchant(selected.id); toast('Merchant removed'); setSelected(null); }}
+          onDelete={async () => { await deleteMerchant(selected.id); toast('Merchant deleted', { kind: 'info' }); setSelected(null); }}
           onSpend={() => { const m = selected; setSelected(null); nav.newSpend({ merchantId: m.id, merchantName: m.name, category: m.mcc ? categoryForMcc(m.mcc) : undefined, payment: { type: 'upi' } }); }}
         />
       )}

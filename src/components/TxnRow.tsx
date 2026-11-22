@@ -48,6 +48,6 @@ export function useDeleteSpend() {
   const { deleteTransaction, saveTransaction } = useStore();
   return async (t: Transaction) => {
     await deleteTransaction(t.id);
-    toast('Spend deleted', { label: 'Undo', run: () => { saveTransaction(t); } });
+    toast('Spend deleted', { kind: 'info', action: { label: 'Undo', run: () => { saveTransaction(t); } } });
   };
 }

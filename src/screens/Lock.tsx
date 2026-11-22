@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../lib/store';
-import { VaultError, changePasscode } from '../lib/vault';
+import { VaultError, changePasscode, enableBiometric } from '../lib/vault';
+import { platformAuthenticatorAvailable } from '../lib/webauthn';
 import { IFace, ILock, IShield } from '../components/Icons';
-import { Sheet, toast } from '../components/ui';
+import { Sheet, bioName, toast } from '../components/ui';
 import { markVerified } from '../components/Verify';
 
 const PIN_LEN = 6;
@@ -57,7 +58,7 @@ export function PinPad({ title, subtitle, onComplete, bio }: { title: string; su
       </div>
       <div className="keypad">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((k) => <button key={k} className="key" onClick={() => press(k)}>{k}</button>)}
-        {bio ? <button className="key ghost" onClick={bio} aria-label="Use Face ID or Touch ID"><IFace /></button> : <span />}
+        {bio ? <button className="key ghost" onClick={bio} aria-label={`Use ${bioName()}`}><IFace /></button> : <span />}
         <button className="key" onClick={() => press('0')}>0</button>
         <button className="key ghost" onClick={() => press('del')} aria-label="Delete">⌫</button>
       </div>
@@ -65,43 +66,87 @@ export function PinPad({ title, subtitle, onComplete, bio }: { title: string; su
   );
 }
 
+/** null when the person simply cancelled; otherwise a short, human explanation. */
 const bioError = (e: unknown) => {
+  const name = e instanceof Error ? e.name : '';
   const m = e instanceof Error ? e.message : String(e);
-  if (/NotAllowed|cancel|abort/i.test(m)) return null;
-  return m === 'PRF_UNSUPPORTED' ? 'Biometrics unavailable here — use your PIN.' : m;
+  if (name === 'NotAllowedError' || name === 'AbortError' || /NotAllowed|cancel|abort/i.test(m)) return null;
+  if (m === 'PRF_UNSUPPORTED') return `${bioName()} isn’t supported in this browser — use your PIN.`;
+  return `${bioName()} didn’t work — use your PIN.`;
 };
+
+/** Offered once, right after a PIN is created. */
+function BioOffer({ pin, onDone }: { pin: string; onDone: () => void }) {
+  const { refreshMeta } = useStore();
+  const [busy, setBusy] = useState(false);
+  const name = bioName();
+  const turnOn = async () => {
+    setBusy(true);
+    try {
+      await enableBiometric(pin);
+      await refreshMeta();
+      toast(`${name} is on`, { detail: 'Use it to open your cards.' });
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (m === 'PRF_UNSUPPORTED') toast(`${name} isn’t available here`, { kind: 'info', detail: 'Your PIN keeps your cards safe.' });
+      else toast(`${name} not turned on`, { kind: 'info', detail: 'You can turn it on anytime in Settings.' });
+    }
+    setBusy(false);
+    onDone();
+  };
+  return (
+    <div className="center" style={{ padding: '10px 6px 4px' }}>
+      <div className="cbtn tinted" style={{ width: 64, height: 64, margin: '0 auto 14px' }}><IFace width={32} height={32} /></div>
+      <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>Use {name}?</div>
+      <p className="muted small" style={{ margin: '6px auto 22px', maxWidth: 300, lineHeight: 1.45 }}>Open your cards with a glance instead of typing your PIN. Your PIN still works as a backup.</p>
+      <div className="stack" style={{ gap: 10 }}>
+        <button className="btn primary block" disabled={busy} onClick={turnOn}><IFace width={20} /> {busy ? 'Waiting…' : `Turn On ${name}`}</button>
+        <button className="btn secondary block" disabled={busy} onClick={() => { toast('PIN created', { detail: `You can turn on ${name} later in Settings.` }); onDone(); }}>Not Now</button>
+      </div>
+    </div>
+  );
+}
 
 /** Unlock (or first-time PIN setup) for the card vault. */
 export function VaultGate({ reason, onDone }: { reason?: string; onDone?: () => void }) {
   const { vault, unlock, unlockBiometric, setupPin, biometricEnabled } = useStore();
   const [first, setFirst] = useState<string | null>(null);
+  const [offerPin, setOfferPin] = useState<string | null>(null);
+  const offering = useRef(false);
+  // Unlocked some other way (e.g. another prompt) — nothing left to ask here.
+  useEffect(() => {
+    if (vault === 'unlocked' && !offering.current) onDone?.();
+  }, [vault, onDone]);
   const tried = useRef(false);
 
   const done = () => { markVerified(); onDone?.(); };
   const tryBio = useCallback(async () => {
-    try { await unlockBiometric(); markVerified(); onDone?.(); } catch (e) { const m = bioError(e); if (m) toast(m); }
+    try { await unlockBiometric(); markVerified(); onDone?.(); } catch (e) { const m = bioError(e); if (m) toast(m, { kind: 'info' }); }
   }, [unlockBiometric, onDone]);
 
   useEffect(() => {
     if (vault === 'locked' && biometricEnabled && !tried.current) { tried.current = true; tryBio(); }
   }, [vault, biometricEnabled, tryBio]);
 
+  if (offerPin) return <BioOffer pin={offerPin} onDone={done} />;
   if (vault === 'none') {
     return first == null ? (
-      <PinPad key="a" title="Create a PIN" subtitle={reason ?? 'Protects your card numbers and gift card codes'} onComplete={async (p) => { setFirst(p); return null; }} />
+      <PinPad key="a" title="Create a 6-digit PIN" subtitle={reason ?? 'It protects your card numbers and gift card codes'} onComplete={async (p) => { setFirst(p); return null; }} />
     ) : (
       <PinPad key="b" title="Confirm your PIN" subtitle="Enter it once more" onComplete={async (p) => {
-        if (p !== first) { setFirst(null); return 'PINs didn’t match. Try again.'; }
+        if (p !== first) { setFirst(null); return 'PINs didn’t match — try again'; }
+        const canBio = await platformAuthenticatorAvailable();
+        offering.current = canBio;
         await setupPin(p);
-        toast('PIN set — turn on Face ID in Settings');
-        done();
+        if (canBio) setOfferPin(p);
+        else { toast('PIN created', { detail: 'Your cards and gift codes are now protected.' }); done(); }
         return null;
       }} />
     );
   }
   return (
-    <PinPad title="Enter PIN" subtitle={reason ?? 'Unlock your cards'} bio={biometricEnabled ? tryBio : undefined} onComplete={async (p) => {
-      try { await unlock(p); done(); return null; } catch (e) { return e instanceof VaultError ? e.message : 'Could not unlock'; }
+    <PinPad title="Enter your PIN" subtitle={reason ?? 'to open your cards'} bio={biometricEnabled ? tryBio : undefined} onComplete={async (p) => {
+      try { await unlock(p); done(); return null; } catch (e) { return e instanceof VaultError ? e.message : 'Something went wrong — try again'; }
     }} />
   );
 }
@@ -132,7 +177,7 @@ export function MigrateScreen() {
     try {
       const k = await migrate(code);
       if (k === 'password' && code) { setOld(code); setStage('newpin'); return null; }
-      if (k === 'password') { toast('Updated — set a PIN in Settings'); }
+      if (k === 'password') { toast('Update complete', { kind: 'info', detail: 'Set a PIN in Settings to protect your cards.' }); }
       return null;
     } catch (e) {
       const m = e instanceof VaultError ? e.message : bioError(e) ?? '';
@@ -167,7 +212,7 @@ export function MigrateScreen() {
             if (p !== newPin) { setStage('newpin'); return 'PINs didn’t match'; }
             await changePasscode(old, p, 'pin');
             await refreshMeta();
-            toast('All set — your PIN is ready');
+            toast('You’re all set', { detail: 'Your PIN now protects cards and gift codes.' });
             finishMigration();
             return null;
           }} />
