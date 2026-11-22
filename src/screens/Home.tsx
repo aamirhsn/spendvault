@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
 import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, prettyDate, todayISO } from '../lib/format';
@@ -19,7 +19,7 @@ function greeting() {
   return h < 5 ? 'Good Night' : h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
 }
 const ordinal = (n: number) => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
-const WEEKS = 16;
+const WEEKS = 8;
 
 export function Home() {
   const { data, biometricEnabled, vault, requestUnlock } = useStore();
@@ -31,6 +31,7 @@ export function Home() {
   const fmt = (n: number) => money(n, cur, { hide, decimals: false });
   const fmtC = (n: number) => money(n, cur, { hide, compact: true });
   const [budgets, setBudgets] = useState(false);
+  const [heatSel, setHeatSel] = useState<string | null>(null);
   const [todoSheet, setTodoSheet] = useState(false);
   const [todoEdit, setTodoEdit] = useState<Todo | null>(null);
   const openTodos = useMemo(() => sortTodos((data.todos ?? []).filter((t) => !t.done)), [data.todos]);
@@ -61,19 +62,23 @@ export function Home() {
     return { month, lastToDate, count, byCat, top: cats[0], slices };
   }, [txns, thisMonth, lastMonth, today]);
 
-  // Heatmap: last 16 weeks, Monday-first columns.
+  // Heatmap: last WEEKS weeks. Columns are weeks (oldest → this week), rows are Mon → Sun.
+  // Shade = how the day ranks among your spending days in the window (quartiles).
   const heat = useMemo(() => {
     const totals = new Map<string, number>();
-    for (const t of txns) totals.set(t.date, (totals.get(t.date) ?? 0) + t.amount);
+    const counts = new Map<string, number>();
+    for (const t of txns) { totals.set(t.date, (totals.get(t.date) ?? 0) + t.amount); counts.set(t.date, (counts.get(t.date) ?? 0) + 1); }
     const end = parseISO(today);
     const start = new Date(end);
     start.setDate(start.getDate() - ((end.getDay() + 6) % 7) - (WEEKS - 1) * 7);
-    const cells: { iso: string; v: number; future: boolean }[] = [];
+    const cells: { iso: string; v: number; n: number; future: boolean }[] = [];
+    const weeks: Date[] = [];
     for (let i = 0; i < WEEKS * 7; i++) {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
+      if (i % 7 === 0) weeks.push(d);
       const iso = todayISO(d);
-      cells.push({ iso, v: totals.get(iso) ?? 0, future: d > end });
+      cells.push({ iso, v: totals.get(iso) ?? 0, n: counts.get(iso) ?? 0, future: d > end });
     }
     const vals = cells.filter((c) => c.v > 0).map((c) => c.v).sort((a, b) => a - b);
     const q = (p: number) => vals[Math.floor((vals.length - 1) * p)] ?? 0;
@@ -82,8 +87,11 @@ export function Home() {
     const weekStart = new Date(end);
     weekStart.setDate(end.getDate() - ((end.getDay() + 6) % 7));
     const thisWeek = cells.filter((c) => !c.future && c.iso >= todayISO(weekStart)).reduce((a, c) => a + c.v, 0);
-    return { cells: cells.map((c) => ({ ...c, l: level(c.v) })), thisWeek };
+    const total = cells.reduce((a, c) => a + c.v, 0);
+    return { cells: cells.map((c) => ({ ...c, l: level(c.v) })), thisWeek, weeks, total };
   }, [txns, today]);
+
+  const selCell = heatSel ? heat.cells.find((c) => c.iso === heatSel) : undefined;
 
   const monthly = useMemo<Point[]>(() => {
     const totals = new Map<string, number>();
@@ -169,11 +177,30 @@ export function Home() {
             </div>
           </div>
           <div style={{ padding: '0 16px 16px' }}>
-            <div className="heat" style={{ gridTemplateColumns: `repeat(${WEEKS}, 1fr)` }} role="img" aria-label={`Daily spending heatmap, ${fmt(heat.thisWeek)} this week`}>
-              {heat.cells.map((c) => <i key={c.iso} data-l={c.l} className={c.future ? 'future' : ''} title={`${prettyDate(c.iso)}: ${fmt(c.v)}`} />)}
+            <div className="heat-wrap" style={{ gridTemplateColumns: `auto repeat(${WEEKS}, minmax(0, 30px))` }} role="group" aria-label={`Daily spending, last ${WEEKS} weeks`}>
+              <span />
+              {heat.weeks.map((w, i) => (
+                <span key={i} className="heat-wk">{i === 0 || w.getDate() <= 7 ? w.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : w.getDate()}</span>
+              ))}
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, r) => (
+                <Fragment key={d}>
+                  <span className="heat-day">{r % 2 === 0 ? d : ''}</span>
+                  {heat.weeks.map((_, c) => {
+                    const cell = heat.cells[c * 7 + r];
+                    return (
+                      <button key={cell.iso} className={`heat-cell ${cell.future ? 'future' : ''} ${heatSel === cell.iso ? 'sel' : ''}`} data-l={cell.l} disabled={cell.future}
+                        aria-label={`${prettyDate(cell.iso)}: ${fmt(cell.v)}`} onClick={() => setHeatSel(heatSel === cell.iso ? null : cell.iso)} />
+                    );
+                  })}
+                </Fragment>
+              ))}
             </div>
-            <div className="row between foot muted" style={{ marginTop: 8 }}>
-              <span>{fmt(heat.thisWeek)} this week</span>
+            <div className="row between foot muted" style={{ marginTop: 10, minHeight: 20 }}>
+              {selCell ? (
+                <span><b style={{ color: 'var(--label)' }}>{parseISO(selCell.iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</b> · {selCell.n ? `${fmt(selCell.v)} · ${selCell.n} spend${selCell.n === 1 ? '' : 's'}` : 'No spends'}</span>
+              ) : (
+                <span>{fmt(heat.thisWeek)} this week · {fmt(heat.total)} in {WEEKS} weeks</span>
+              )}
               <span className="row" style={{ gap: 5 }}>Less <span className="heat-key">{[0, 1, 2, 3, 4].map((l) => <i key={l} data-l={l} />)}</span> More</span>
             </div>
           </div>
