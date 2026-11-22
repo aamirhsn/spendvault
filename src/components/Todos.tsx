@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useStore } from '../lib/store';
+import { TODO_KEEP_DAYS, useStore } from '../lib/store';
 import type { Todo } from '../lib/types';
 import { daysUntil, parseISO, todayISO } from '../lib/format';
 import { DeleteRow, FieldRow, Group, SaveBtn, Sheet, toast } from './ui';
@@ -103,6 +103,7 @@ export function TodoSheet({ onClose }: { onClose: () => void }) {
           <section>
             <div className="section-label">Completed · {done.length} <button className="link" onClick={clearDoneTodos}>Clear</button></div>
             <div className="group">{done.map((t) => <TodoRow key={t.id} t={t} onEdit={setEdit} />)}</div>
+            <div className="group-f">Completed items are removed automatically {TODO_KEEP_DAYS} days after you tick them off.</div>
           </section>
         )}
       </div>

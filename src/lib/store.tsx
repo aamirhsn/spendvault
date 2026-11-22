@@ -94,6 +94,8 @@ function adjustGiftBalances(giftCards: GiftCard[], uses: Transaction['giftCards'
   });
 }
 const tail = (code: string) => code.replace(/[\s-]/g, '').slice(-4);
+/** Completed to-dos are kept this many days, then removed. */
+export const TODO_KEEP_DAYS = 10;
 const sortTx = (a: Transaction, b: Transaction) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -177,6 +179,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setAll(split(dataRef.current).pub);
     setVault((v) => (v === 'unlocked' ? 'locked' : v));
   }, [flush]);
+
+  // Completed to-dos are cleared 10 days after they were ticked off.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const sweep = () => {
+      const cutoff = Date.now() - TODO_KEEP_DAYS * 86_400_000;
+      const todos = dataRef.current.todos ?? [];
+      if (todos.some((t) => t.done && (t.doneAt ?? t.updatedAt) < cutoff)) {
+        commit((d) => ({ ...d, todos: (d.todos ?? []).filter((t) => !(t.done && (t.doneAt ?? t.updatedAt) < cutoff)) }));
+      }
+    };
+    sweep();
+    const id = window.setInterval(sweep, 6 * 3_600_000);
+    return () => clearInterval(id);
+  }, [status, commit]);
 
   // Auto-lock the card vault after inactivity / time in background.
   useEffect(() => {
