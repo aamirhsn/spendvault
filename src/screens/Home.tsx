@@ -1,19 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
-import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, todayISO } from '../lib/format';
-import { SERIES, SERIES_OTHER, giftName } from '../lib/categories';
+import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, todayISO } from '../lib/format';
+import { SERIES, SERIES_OTHER } from '../lib/categories';
 import { Bars, type Point } from '../components/Charts';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
-import { Logo, hasLogo } from '../lib/logos';
-import { ICard, IChevron, IFace, IGift, IMessage, IPie, ISettings } from '../components/Icons';
+import { IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
 import { CBtn, NavRow, bioName } from '../components/ui';
 import { Insights, SafeToSpend, buildInsights } from '../components/Pulse';
 import { UtilMatrix } from '../components/UtilMatrix';
 import { TodoEditor, TodoFab, TodoSheet, sortTodos } from '../components/Todos';
 import type { Todo } from '../lib/types';
-import { cardFinishKey, finishFor } from '../lib/finishes';
 
 function greeting() {
   const h = new Date().getHours();
@@ -77,11 +75,6 @@ export function Home() {
         .sort((a, b) => (b.c.overdue ?? 0) - (a.c.overdue ?? 0) || a.days - b.days),
     [cards],
   );
-  // Coming up: only what needs attention within a week.
-  const soonDues = dues.filter((d) => (d.c.overdue ?? 0) > 0 || d.days <= 7);
-  const soonGifts = giftCards
-    .filter((g) => !g.archived && g.balance > 0 && g.expiry && daysUntil(parseISO(g.expiry)) >= 0 && daysUntil(parseISO(g.expiry)) <= 7)
-    .sort((a, b) => a.expiry.localeCompare(b.expiry));
 
   const budget = settings.monthlyBudget;
   const catBudgets = Object.entries(settings.categoryBudgets ?? {})
@@ -162,66 +155,6 @@ export function Home() {
           <section>
             <div className="section-label">Card utilisation <button className="link" onClick={() => nav.go('cards')}>Cards <IChevron width={13} /></button></div>
             <UtilMatrix cards={cards} txns={txns} fmt={fmt} onOpen={() => nav.go('cards')} />
-          </section>
-        )}
-
-        {(soonDues.length > 0 || soonGifts.length > 0) && (
-          <section>
-            <div className="section-label">Coming up · next 7 days</div>
-            <div className="stack-sm">
-              {soonDues.length > 0 && (
-                <div className="card soon">
-                  <button className="soon-h" onClick={() => nav.go('cards')}>
-                    <span className="soon-ic card-ic" aria-hidden><ICard /></span>
-                    <span className="grow"><b>Card bills</b><span className="foot muted">{soonDues.length} due</span></span>
-                    <b className="soon-tot neg">{fmt(soonDues.reduce((a, d) => a + d.owed, 0))}</b>
-                    <IChevron width={13} className="muted" />
-                  </button>
-                  {soonDues.map(({ c, due, days, owed }) => {
-                    const over = (c.overdue ?? 0) > 0;
-                    return (
-                      <button key={c.id} className="cell soon-row" onClick={() => nav.go('cards')}>
-                        <span className="soon-card" style={{ background: finishFor(cardFinishKey(c)).bg }}><i>••{c.last4}</i></span>
-                        <span className="grow">
-                          <div className="t ellipsis">{c.name || c.bank}</div>
-                          <div className="st">{c.bank ? `${c.bank} · ` : ''}Due {due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</div>
-                        </span>
-                        <span className="amt-col">
-                          <div className="a neg">{fmt(owed)}</div>
-                          <div style={{ marginTop: 3 }}><span className={`tag ${over || days <= 1 ? 'bad' : 'warn'}`}>{over ? 'Overdue' : days <= 0 ? 'Due today' : days === 1 ? 'Tomorrow' : `In ${days} days`}</span></div>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {soonGifts.length > 0 && (
-                <div className="card soon">
-                  <button className="soon-h" onClick={() => nav.go('gifts')}>
-                    <span className="soon-ic gift-ic" aria-hidden><IGift /></span>
-                    <span className="grow"><b>Gift cards expiring</b><span className="foot muted">{soonGifts.length} expiring</span></span>
-                    <b className="soon-tot">{fmt(soonGifts.reduce((a, g) => a + g.balance, 0))}</b>
-                    <IChevron width={13} className="muted" />
-                  </button>
-                  {soonGifts.map((g) => {
-                    const d = daysUntil(parseISO(g.expiry));
-                    return (
-                      <button key={g.id} className="cell soon-row" onClick={() => nav.go('gifts')}>
-                        <span className="soon-gift">{hasLogo(g.brand, data.logos) ? <Logo name={g.brand} /> : <b>{g.brand.slice(0, 1)}</b>}</span>
-                        <span className="grow">
-                          <div className="t ellipsis">{giftName(g)}</div>
-                          <div className="st">Gift card</div>
-                        </span>
-                        <span className="amt-col">
-                          <div className="a">{fmt(g.balance)}</div>
-                          <div style={{ marginTop: 3 }}><span className={`tag ${d <= 1 ? 'bad' : 'warn'}`}>{d <= 0 ? 'Expires today' : d === 1 ? 'Expires tomorrow' : `Expires in ${d} days`}</span></div>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </section>
         )}
 
