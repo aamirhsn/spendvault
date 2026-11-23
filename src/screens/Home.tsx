@@ -4,7 +4,7 @@ import { useNav } from '../lib/nav';
 import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, todayISO } from '../lib/format';
 import { SERIES, SERIES_OTHER } from '../lib/categories';
 import { Bars, type Point } from '../components/Charts';
-import { BudgetsSheet, budgetColor } from '../components/Budgets';
+import { BudgetsSheet, budgetColor, fixedCats } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
 import { CBtn, NavRow, bioName } from '../components/ui';
@@ -80,10 +80,20 @@ export function Home() {
     .map(([name, limit]) => ({ name, limit, spent: stats.byCat.get(name) ?? 0 }))
     .sort((a, b) => b.spent / b.limit - a.spent / a.limit);
   const limitTotal = budget || catBudgets.reduce((a, b) => a + b.limit, 0);
-  const spentTotal = budget ? stats.month : catBudgets.reduce((a, b) => a + b.spent, 0);
 
   const inScope = (cat: string) => !!budget || catBudgets.some((b) => b.name === cat);
-  const spentToday = txns.filter((t) => t.date === today && (limitTotal ? inScope(t.category) : true)).reduce((a, t) => a + t.amount, 0);
+  // Safe to spend works on everyday spending only: fixed lump sums (rent, EMIs…) are set aside first.
+  const fixed = fixedCats(settings);
+  const catBudget = settings.categoryBudgets ?? {};
+  const spentIn = (c: string) => stats.byCat.get(c) ?? 0;
+  const fixedScope = [...fixed].filter((c) => (budget ? true : (catBudget[c] ?? 0) > 0));
+  const fixedPaid = fixedScope.reduce((a, c) => a + spentIn(c), 0);
+  const fixedReserved = fixedScope.reduce((a, c) => a + Math.max(catBudget[c] ?? 0, spentIn(c)), 0);
+  const varLimit = budget ? Math.max(0, budget - fixedReserved) : catBudgets.filter((b) => !fixed.has(b.name)).reduce((a, b) => a + b.limit, 0);
+  const varSpent = budget
+    ? [...stats.byCat.entries()].filter(([c]) => !fixed.has(c)).reduce((a, [, v]) => a + v, 0)
+    : catBudgets.filter((b) => !fixed.has(b.name)).reduce((a, b) => a + b.spent, 0);
+  const spentToday = txns.filter((t) => t.date === today && !fixed.has(t.category) && (limitTotal ? inScope(t.category) : true)).reduce((a, t) => a + t.amount, 0);
   const insights = useMemo(
     () => buildInsights({ txns, giftCards, dues, monthTotal: stats.month, lastToDate: stats.lastToDate, top: stats.top, fmt, go: { cards: () => nav.go('cards'), gifts: () => nav.go('gifts'), spends: () => nav.go('spends') } }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,7 +119,7 @@ export function Home() {
       </div>
 
       <div className="stack-lg">
-        <SafeToSpend limit={limitTotal} spent={spentTotal} spentToday={spentToday} fmt={fmt} onBudget={() => setBudgets(true)} />
+        <SafeToSpend limit={varLimit} spent={varSpent} spentToday={spentToday} hasBudget={limitTotal > 0} fixed={fixedReserved > 0 ? { reserved: fixedReserved, paid: fixedPaid } : undefined} fmt={fmt} onBudget={() => setBudgets(true)} />
         <Insights items={insights} />
 
         {vault === 'none' && (data.cards.length > 0 || data.giftCards.length > 0) && (

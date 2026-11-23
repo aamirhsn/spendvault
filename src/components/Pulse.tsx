@@ -11,6 +11,8 @@ export function SafeToSpend(p: {
   limit: number; // budget for the month (0 = not set)
   spent: number; // spent this month within the budget's scope
   spentToday: number; // spent today within the budget's scope
+  hasBudget: boolean; // any budget set (the everyday part can be 0 if it's all fixed costs)
+  fixed?: { reserved: number; paid: number }; // fixed costs set aside before the daily amount
   fmt: Fmt;
   onBudget(): void;
 }) {
@@ -26,7 +28,7 @@ export function SafeToSpend(p: {
   const label = { none: '', bad: 'Over budget', warn: 'Spending fast', good: 'On track' }[tone];
   const used = p.limit ? Math.min(1, p.spent / p.limit) : 0;
 
-  if (!p.limit) {
+  if (!p.hasBudget) {
     return (
       <button className="card safe tone-none" onClick={p.onBudget}>
         <span className="label-xs">Safe to spend today</span>
@@ -54,6 +56,11 @@ export function SafeToSpend(p: {
         <span><strong>{p.fmt(Math.abs(remaining))}</strong> {remaining < 0 ? 'over' : 'left'} of {p.fmt(p.limit)}</span>
         <span>{daysLeft === 1 ? 'Last day' : `${daysLeft} days left`}</span>
       </div>
+      {p.fixed && (
+        <div className="safe-fixed">
+          {p.fmt(p.fixed.reserved)} set aside for fixed costs · {p.fixed.paid >= p.fixed.reserved ? 'all paid' : `${p.fmt(p.fixed.paid)} paid`}
+        </div>
+      )}
     </button>
   );
 }

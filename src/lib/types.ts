@@ -81,6 +81,8 @@ export interface Settings {
   currency: string;
   monthlyBudget: number;
   categoryBudgets: Record<string, number>;
+  /** Lump-sum categories (rent, EMIs…) set aside before working out the daily amount. Undefined = defaults. */
+  fixedCategories?: string[];
   autoLockMinutes: number;
   theme: 'system' | 'light' | 'dark';
   hideAmounts: boolean;
