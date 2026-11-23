@@ -682,3 +682,27 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .ins-dots { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
 .ins-dots i { width: 6px; height: 6px; border-radius: 9px; background: var(--label-4, #c7c7cc); transition: width .2s, background .2s; }
 .ins-dots i.on { width: 18px; background: var(--tint); }
+
+/* ================= Tab bar visibility =================
+   Floating chrome needs to read as its own layer over busy, colourful pages:
+   denser frosting, a crisp hairline edge, a deeper lift shadow, and a soft
+   scroll-edge fade so content dissolves under the bar instead of colliding with it. */
+.tabbar-wrap::before {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; z-index: -1; pointer-events: none;
+  height: calc(var(--tabbar-h) + var(--safe-b) + 22px);
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--bg) 72%, transparent) 45%, var(--bg));
+}
+.tabbar.liquid, .fab.liquid {
+  background: rgba(255, 255, 255, 0.84);
+  -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 14px 34px -8px rgba(15, 23, 42, 0.28), 0 3px 10px rgba(15, 23, 42, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+.tab { color: var(--label-2); }
+.tab.active { color: var(--tint); }
+.tab-lens { background: color-mix(in srgb, var(--tint) 16%, transparent); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--tint) 25%, transparent); }
+:root[data-theme='dark'] .tabbar.liquid, :root[data-theme='dark'] .fab.liquid {
+  background: rgba(36, 36, 40, 0.86);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.7), 0 3px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
