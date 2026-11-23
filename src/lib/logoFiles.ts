@@ -2,6 +2,10 @@
 // key → file in public/logos
 export const LOGO_FILES: Record<string, string> = {
   "amazon": "amazon.svg",
+  "au": "au.png",
+  "bobcard": "bobcard.png",
+  "kotak": "kotak.png",
+  "slice": "slice.png",
   "amazonpay": "amazonpay.svg",
   "axis": "axis.svg",
   "blinkit": "blinkit.svg",
@@ -25,4 +29,4 @@ export const LOGO_FILES: Record<string, string> = {
   "zomato": "zomato.svg"
 };
 // Logos drawn on a solid background box: they can't be turned into a single-colour silhouette.
-export const BOXED = new Set<string>(["hdfc", "idfcfirst", "shoppersstop", "swiggy", "myntra", "flipkart", "blinkit", "makemytrip", "hsbc"]);
+export const BOXED = new Set<string>(["hdfc", "idfcfirst", "shoppersstop", "swiggy", "myntra", "flipkart", "blinkit", "makemytrip", "hsbc", "au", "kotak"]);

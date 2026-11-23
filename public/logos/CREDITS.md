@@ -30,3 +30,8 @@ Logos are trademarks of their respective owners and are used only to identify ca
 | `zomato.svg` | [File:Zomato Logo.svg](https://commons.wikimedia.org/wiki/File%3AZomato_Logo.svg) | Public domain |
 
 Additional brand marks come from [Simple Icons](https://simpleicons.org) (CC0).
+
+
+## Supplied by the app owner
+
+au.png (AU Small Finance Bank), kotak.png (Kotak Mahindra Bank), slice.png (slice), bobcard.png (BOBCARD) were provided by the app's owner for personal use. Trademarks belong to their respective owners.

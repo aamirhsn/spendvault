@@ -11,6 +11,9 @@ import { LogoPicker } from '../components/LogoPicker';
 import { IAlert, IBank, IBell, ICalendar, ICard, ICopy, IEdit, IEye, IEyeOff, IHash, ILock, IPie, ITag, IUser, IWallet } from '../components/Icons';
 import { VaultGate } from './Lock';
 
+/** Suggestions for the Bank field (free text still works). */
+const BANK_NAMES = ['HDFC Bank', 'ICICI Bank', 'Axis Bank', 'SBI Card', 'Kotak Mahindra Bank', 'AU Small Finance Bank', 'BOBCARD', 'IDFC FIRST Bank', 'IndusInd Bank', 'Yes Bank', 'HSBC', 'Standard Chartered', 'American Express', 'slice', 'RBL Bank', 'Federal Bank', 'OneCard'];
+
 const NETWORKS: CardNetwork[] = ['Visa', 'Mastercard', 'RuPay', 'Amex', 'Diners', 'Discover', 'Other'];
 
 function ChipSvg() {
@@ -406,7 +409,7 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
         <Segmented full value={kind} onChange={setKind} options={[{ value: 'credit', label: 'Credit' }, { value: 'debit', label: 'Debit' }]} />
 
         <Group>
-          <FieldRow icon={<IBank />} tile="#007aff" label="Bank"><input placeholder="HDFC Bank" value={bank} onChange={(e) => { setBank(e.target.value); autoFinish(e.target.value, name); }} /></FieldRow>
+          <FieldRow icon={<IBank />} tile="#007aff" label="Bank"><input placeholder="HDFC Bank" list="bank-names" autoComplete="off" value={bank} onChange={(e) => { setBank(e.target.value); autoFinish(e.target.value, name); }} /></FieldRow>
           <FieldRow icon={<ITag />} tile="#5856d6" label="Card name"><input placeholder="Infinia" value={name} onChange={(e) => { setName(e.target.value); autoFinish(bank, e.target.value); }} /></FieldRow>
           <FieldRow icon={<ICard />} tile="#30b0c7" label="Network">
             <select value={network} onChange={(e) => setNetwork(e.target.value as CardNetwork)}>
@@ -440,6 +443,9 @@ function CardForm({ edit, onClose }: { edit?: PaymentCard; onClose: () => void }
             if (f) { try { setArt(await fileToDataUrl(f, 1000, 'image/jpeg')); } catch { toast('Couldn’t use that photo', { kind: 'error', detail: 'Try another image of your card.' }); } }
           }} />
           {bank.trim() && <LogoPicker name={bank} label="Bank logo" />}
+          <datalist id="bank-names">
+            {BANK_NAMES.map((b) => <option key={b} value={b} />)}
+          </datalist>
         </Group>
 
         {kind === 'credit' && (

@@ -26,6 +26,9 @@ const ALIASES: Record<string, string> = {
   axisbank: 'axis', yesbank: 'yes', indusindbank: 'indusind', idfcfirstbank: 'idfcfirst', idfc: 'idfcfirst', idfcbank: 'idfcfirst',
   aubank: 'au', ausmallfinancebank: 'au', ausmallfinance: 'au', standardcharteredbank: 'standardchartered', scb: 'standardchartered',
   federalbank: 'federal', hsbcbank: 'hsbc', tatacliq: 'tatacliq', tataneuhdfc: 'tataneu', amazonpayicici: 'amazonpay',
+  kotakmahindrabank: 'kotak', kotakmahindra: 'kotak', kotakbank: 'kotak',
+  bob: 'bobcard', bankofbaroda: 'bobcard', bobfinancial: 'bobcard', bobcards: 'bobcard', baroda: 'bobcard',
+  slicebank: 'slice', slicesmallfinancebank: 'slice', slicecard: 'slice',
   google: 'googleplay', googleplaystore: 'googleplay', mmt: 'makemytrip', shoppers: 'shoppersstop',
 };
 

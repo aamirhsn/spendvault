@@ -6,7 +6,8 @@ import { cardFinishKey, finishFor } from '../lib/finishes';
 /* Card × day utilisation heatmap.
    Rows are credit cards, columns are the last 14 days plus the next 7. A cell's colour is the card's
    estimated utilisation that day: spends logged since the card's last statement, plus any billed amount
-   still unpaid, divided by the credit limit. A flag marks each card's statement date — the day bureaus
+   still unpaid, divided by the credit limit. A flag marks each card's payment due date so you can see a bill
+   coming. (Cycles still follow the statement date — the day bureaus
    usually snapshot utilisation — so you can pay down a card just before it. */
 
 const BACK = 13;
@@ -27,7 +28,8 @@ function cycleStart(d: Date, sd?: number) {
   const prev = d > here ? here : stmtIn(d.getFullYear(), d.getMonth() - 1, sd);
   return addDays(prev, 1);
 }
-const isStmt = (d: Date, sd?: number) => !!sd && d.getDate() === Math.min(sd, dim(d.getFullYear(), d.getMonth()));
+/** True when `d` is the given day of the month (clamped for short months). */
+const isDay = (d: Date, day?: number) => !!day && d.getDate() === Math.min(day, dim(d.getFullYear(), d.getMonth()));
 
 export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[]; txns: Transaction[]; fmt: (n: number) => string; onOpen(): void }) {
   const model = useMemo(() => {
@@ -56,12 +58,13 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
       const cells = days.map((d) => {
         const future = d > today;
         const bal = future ? 0 : balanceOn(d);
-        return { iso: todayISO(d), future, u: bal / limit, bal, flag: isStmt(d, c.statementDay) };
+        return { iso: todayISO(d), future, u: bal / limit, bal, flag: isDay(d, c.dueDay), stmt: isDay(d, c.statementDay) };
       });
       const now = cells[BACK];
-      // Next statement within the visible window, for the repayment tip.
-      const nextIdx = cells.findIndex((x, i) => i > BACK && x.flag);
-      return { c, cells, now, limit, nextStmt: nextIdx > 0 ? days[nextIdx] : null };
+      // Next statement (for the under-30% tip) and next due date (for the header) within the window.
+      const nextIdx = cells.findIndex((x, i) => i > BACK && x.stmt);
+      const dueIdx = cells.findIndex((x, i) => i >= BACK && x.flag);
+      return { c, cells, now, limit, nextStmt: nextIdx > 0 ? days[nextIdx] : null, nextDue: dueIdx >= 0 ? days[dueIdx] : null };
     }).sort((a, b) => b.now.u - a.now.u);
 
     // Most useful action: a card with a statement coming up while it would report 30%+.
@@ -75,7 +78,7 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
     const totLim = rows.reduce((a, r) => a + r.limit, 0);
     const bands = [0, 0, 0, 0, 0];
     for (const r of rows) bands[level(r.now.u)]++;
-    const nextAny = rows.filter((r) => r.nextStmt).sort((a, b) => a.nextStmt!.getTime() - b.nextStmt!.getTime())[0];
+    const nextAny = rows.filter((r) => r.nextDue).sort((a, b) => a.nextDue!.getTime() - b.nextDue!.getTime())[0];
     return { days, rows, missing: credit.length - withLimit.length, tip, today, totBal, totLim, bands, nextAny };
   }, [cards, txns]);
 
@@ -83,7 +86,7 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
   if (!rows.length) {
     return missing ? (
       <div className="card umx">
-        <p className="foot muted" style={{ margin: 0 }}>Add a credit limit and statement day to your credit cards to see daily utilisation here.</p>
+        <p className="foot muted" style={{ margin: 0 }}>Add a credit limit, statement day and due day to your credit cards to see daily utilisation here.</p>
         <button className="btn sm" style={{ marginTop: 10 }} onClick={onOpen}>Open Cards</button>
       </div>
     ) : null;
@@ -112,7 +115,7 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
           </div>
           {nextAny && (
             <div className="umx-next">
-              Next statement: <b>{nextAny.c.name || nextAny.c.bank}</b> {daysTo(nextAny.nextStmt!) === 1 ? 'tomorrow' : `in ${daysTo(nextAny.nextStmt!)} days`}
+              Next bill due: <b>{nextAny.c.name || nextAny.c.bank}</b> {daysTo(nextAny.nextDue!) === 0 ? 'today' : daysTo(nextAny.nextDue!) === 1 ? 'tomorrow' : `in ${daysTo(nextAny.nextDue!)} days`}
             </div>
           )}
         </div>
@@ -137,11 +140,11 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
               {cells.map((x, i) => (
                 <span
                   key={x.iso}
-                  className={`umx-c${x.future ? ' fut' : ''}${x.flag ? ' stmt' : ''}`}
+                  className={`umx-c${x.future ? ' fut' : ''}${x.flag ? ' due' : ''}${x.flag && i >= BACK && i - BACK <= 3 ? ' soon' : ''}`}
                   data-l={x.future ? undefined : level(x.u)}
-                  title={`${c.name || c.bank} · ${fmtDay(days[i])}: ${x.future ? 'upcoming' : `${Math.round(x.u * 100)}% (${fmt(x.bal)})`}${x.flag ? ' · statement' : ''}`}
+                  title={`${c.name || c.bank} · ${fmtDay(days[i])}: ${x.future ? 'upcoming' : `${Math.round(x.u * 100)}% (${fmt(x.bal)})`}${x.flag ? ' · payment due' : ''}${x.stmt ? ' · statement' : ''}`}
                 >
-                  {x.flag && <svg viewBox="0 0 12 14" className="umx-flag" aria-label="Statement date"><path d="M2 13.5V1.2" /><path className="pen" d="M2.4 1.5h7.4l-1.8 2.6 1.8 2.6H2.4z" /></svg>}
+                  {x.flag && <svg viewBox="0 0 12 14" className="umx-flag" aria-label="Payment due date"><path d="M2 13.5V1.2" /><path className="pen" d="M2.4 1.5h7.4l-1.8 2.6 1.8 2.6H2.4z" /></svg>}
                 </span>
               ))}
               <span className="umx-now" data-l={level(now.u)}>{Math.round(now.u * 100)}%</span>
@@ -153,7 +156,7 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
       <div className="umx-legend">
         {[1, 2, 3, 4].map((l) => <span key={l}><i data-l={l} />{LEVEL_TXT[l]}</span>)}
         <span>
-          <svg viewBox="0 0 12 14" className="umx-flag inline"><path d="M2 13.5V1.2" /><path className="pen" d="M2.4 1.5h7.4l-1.8 2.6 1.8 2.6H2.4z" /></svg>Statement
+          <svg viewBox="0 0 12 14" className="umx-flag inline"><path d="M2 13.5V1.2" /><path className="pen" d="M2.4 1.5h7.4l-1.8 2.6 1.8 2.6H2.4z" /></svg>Due date
         </span>
       </div>
 
