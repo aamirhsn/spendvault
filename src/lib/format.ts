@@ -15,7 +15,8 @@ export function money(n: number, currency = 'INR', opts: { compact?: boolean; hi
     });
     fmtCache.set(key, f);
   }
-  return f.format(n || 0);
+  // Hair space (kept unbreakable) after ₹ so the sign never touches the first digit.
+  return f.format(n || 0).replace('₹', '₹\u200A\u2060');
 }
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;

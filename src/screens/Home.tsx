@@ -5,11 +5,12 @@ import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, pars
 import { SERIES, SERIES_OTHER } from '../lib/categories';
 import { Bars, Donut, type Point } from '../components/Charts';
 import { useDeleteSpend, TxnRow } from '../components/TxnRow';
-import { BudgetsSheet, budgetColor } from '../components/Budgets';
+import { BudgetsSheet } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
-import { ICalendar, IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
+import { IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
 import { CBtn, NavRow, bioName } from '../components/ui';
+import { Insights, SafeToSpend, buildInsights } from '../components/Pulse';
 import { TodoEditor, TodoFab, TodoSheet, sortTodos } from '../components/Todos';
 import { cardFinishKey, finishFor } from '../lib/finishes';
 import type { Todo } from '../lib/types';
@@ -19,7 +20,6 @@ function greeting() {
   return h < 5 ? 'Good Night' : h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
 }
 const ordinal = (n: number) => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
-const WEEKS = 16;
 
 export function Home() {
   const { data, biometricEnabled, vault, requestUnlock } = useStore();
@@ -61,30 +61,6 @@ export function Home() {
     return { month, lastToDate, count, byCat, top: cats[0], slices };
   }, [txns, thisMonth, lastMonth, today]);
 
-  // Heatmap: last 16 weeks, Monday-first columns.
-  const heat = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const t of txns) totals.set(t.date, (totals.get(t.date) ?? 0) + t.amount);
-    const end = parseISO(today);
-    const start = new Date(end);
-    start.setDate(start.getDate() - ((end.getDay() + 6) % 7) - (WEEKS - 1) * 7);
-    const cells: { iso: string; v: number; future: boolean }[] = [];
-    for (let i = 0; i < WEEKS * 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const iso = todayISO(d);
-      cells.push({ iso, v: totals.get(iso) ?? 0, future: d > end });
-    }
-    const vals = cells.filter((c) => c.v > 0).map((c) => c.v).sort((a, b) => a - b);
-    const q = (p: number) => vals[Math.floor((vals.length - 1) * p)] ?? 0;
-    const [q1, q2, q3] = [q(0.25), q(0.5), q(0.75)];
-    const level = (v: number) => (v <= 0 ? 0 : v <= q1 ? 1 : v <= q2 ? 2 : v <= q3 ? 3 : 4);
-    const weekStart = new Date(end);
-    weekStart.setDate(end.getDate() - ((end.getDay() + 6) % 7));
-    const thisWeek = cells.filter((c) => !c.future && c.iso >= todayISO(weekStart)).reduce((a, c) => a + c.v, 0);
-    return { cells: cells.map((c) => ({ ...c, l: level(c.v) })), thisWeek };
-  }, [txns, today]);
-
   const monthly = useMemo<Point[]>(() => {
     const totals = new Map<string, number>();
     for (const t of txns) totals.set(monthKey(t.date), (totals.get(monthKey(t.date)) ?? 0) + t.amount);
@@ -124,9 +100,15 @@ export function Home() {
     .sort((a, b) => b.spent / b.limit - a.spent / a.limit);
   const limitTotal = budget || catBudgets.reduce((a, b) => a + b.limit, 0);
   const spentTotal = budget ? stats.month : catBudgets.reduce((a, b) => a + b.spent, 0);
-  const remaining = limitTotal - spentTotal;
-  const pct = limitTotal ? (spentTotal / limitTotal) * 100 : 0;
   const delta = stats.lastToDate > 0 ? ((stats.month - stats.lastToDate) / stats.lastToDate) * 100 : null;
+
+  const inScope = (cat: string) => !!budget || catBudgets.some((b) => b.name === cat);
+  const spentToday = txns.filter((t) => t.date === today && (limitTotal ? inScope(t.category) : true)).reduce((a, t) => a + t.amount, 0);
+  const insights = useMemo(
+    () => buildInsights({ txns, giftCards, dues, monthTotal: stats.month, lastToDate: stats.lastToDate, top: stats.top, fmt, go: { cards: () => nav.go('cards'), gifts: () => nav.go('gifts'), spends: () => nav.go('spends') } }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [txns, giftCards, dues, stats, hide, cur],
+  );
 
   const recent = txns.slice(0, 8);
   const recentGroups: [string, typeof recent][] = [];
@@ -150,34 +132,12 @@ export function Home() {
 
       <div className="greet" style={{ margin: '0 4px 20px' }}>
         <h1>{greeting()}{settings.displayName ? `, ${settings.displayName}` : ''}</h1>
-        <p>Today is {ordinal(now.getDate())} {now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}. This is your spending for the last {WEEKS} weeks.</p>
+        <p>Today is {ordinal(now.getDate())} {now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}.{daysLeft > 1 ? ` ${daysLeft} days left this month.` : ' Last day of the month.'}</p>
       </div>
 
       <div className="stack-lg">
-        <div className="card">
-          <div className="split">
-            <div className="cellx">
-              <div className="k"><ICalendar /> This Month</div>
-              <div className="v num">{fmt(stats.month)}</div>
-              <div className="s">{delta == null ? `${stats.count} spends` : <span className={delta > 0 ? 'neg' : 'pos'}>{delta > 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(0)}% vs last month</span>}</div>
-            </div>
-            <div className="sep" />
-            <div className="cellx">
-              <div className="k"><IPie /> Top Category</div>
-              <div className="v" style={{ fontSize: 22, paddingTop: 3 }}>{stats.top ? stats.top[0] : '—'}</div>
-              <div className="s">{stats.top ? fmt(stats.top[1]) : 'No spends yet'}</div>
-            </div>
-          </div>
-          <div style={{ padding: '0 16px 16px' }}>
-            <div className="heat" style={{ gridTemplateColumns: `repeat(${WEEKS}, 1fr)` }} role="img" aria-label={`Daily spending heatmap, ${fmt(heat.thisWeek)} this week`}>
-              {heat.cells.map((c) => <i key={c.iso} data-l={c.l} className={c.future ? 'future' : ''} title={`${prettyDate(c.iso)}: ${fmt(c.v)}`} />)}
-            </div>
-            <div className="row between foot muted" style={{ marginTop: 8 }}>
-              <span>{fmt(heat.thisWeek)} this week</span>
-              <span className="row" style={{ gap: 5 }}>Less <span className="heat-key">{[0, 1, 2, 3, 4].map((l) => <i key={l} data-l={l} />)}</span> More</span>
-            </div>
-          </div>
-        </div>
+        <SafeToSpend limit={limitTotal} spent={spentTotal} spentToday={spentToday} monthTotal={stats.month} delta={delta} fmt={fmt} onBudget={() => setBudgets(true)} />
+        <Insights items={insights} />
 
         {vault === 'none' && (data.cards.length > 0 || data.giftCards.length > 0) && (
           <div className="group"><NavRow icon={<IFace />} iconBg="var(--tint)" title="Protect your cards with a PIN" subtitle="Keeps card numbers and gift codes private" onClick={() => requestUnlock('Create a PIN for your cards')} /></div>
@@ -188,17 +148,8 @@ export function Home() {
 
         <section>
           <div className="section-label">Budgets <button className="link" onClick={() => setBudgets(true)}>{limitTotal ? 'Edit' : 'Set up'} <IChevron width={13} /></button></div>
-          {limitTotal ? (
+          {catBudgets.length ? (
             <div className="card">
-              <div style={{ padding: '18px 16px 16px', background: 'linear-gradient(180deg, color-mix(in srgb, var(--tint) 10%, var(--card)), var(--card))', borderRadius: 'var(--r-group) var(--r-group) 0 0' }}>
-                <div className="row between"><span className="label-xs">{budget ? 'Monthly budget' : 'All budgets'} · {monthLabel(thisMonth, true)}</span><span className="foot muted">{pct.toFixed(0)}% spent</span></div>
-                <div className="giant num" style={{ marginTop: 10 }}>{fmt(Math.abs(remaining))}<small>{remaining >= 0 ? 'remaining' : 'over budget'}</small></div>
-                <div className="bar thick" style={{ marginTop: 14 }}><div style={{ width: `${Math.min(100, pct)}%`, background: budgetColor(pct) }} /></div>
-                <div className="row between" style={{ marginTop: 10 }}>
-                  <div><div className="foot muted">Spent</div><b className="num">{fmt(spentTotal)}</b></div>
-                  <div style={{ textAlign: 'right' }}><div className="foot muted">Limit</div><b className="num">{fmt(limitTotal)}</b></div>
-                </div>
-              </div>
               {catBudgets.map((b) => {
                 const p = (b.spent / b.limit) * 100;
                 return (
@@ -217,7 +168,7 @@ export function Home() {
               })}
             </div>
           ) : (
-            <div className="group"><NavRow icon={<IPie />} iconBg="var(--tint)" title="Set monthly budgets" subtitle="Overall and per category — Food, Fuel, Shopping…" onClick={() => setBudgets(true)} /></div>
+            <div className="group"><NavRow icon={<IPie />} iconBg="var(--tint)" title={limitTotal ? 'Add category budgets' : 'Set monthly budgets'} subtitle={limitTotal ? 'Track Food, Fuel, Shopping… separately' : 'Overall and per category — Food, Fuel, Shopping…'} onClick={() => setBudgets(true)} /></div>
           )}
         </section>
 
