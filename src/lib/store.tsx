@@ -115,6 +115,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    const w = window as unknown as { __fiscusStarted: string };
+    w.__fiscusStarted = 'loading data';
     (async () => {
       const m = (await V.loadMeta()) ?? null;
       setMeta(m);
@@ -126,8 +128,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setAll((await V.loadOpen()) ?? emptyVault());
       setVault(m ? 'locked' : 'none');
       setStatus('ready');
+      w.__fiscusStarted = 'ready';
       requestPersistence();
-    })();
+    })().catch((e) => {
+      // Surfaced by the startup watchdog (public/boot.js).
+      w.__fiscusStarted = 'data load failed: ' + (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+      console.error('Load failed', e);
+    });
   }, []);
 
   /** Persist: open tier always; secure tier only while unlocked (otherwise secrets aren't in memory). */

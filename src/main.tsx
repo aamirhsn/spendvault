@@ -6,6 +6,7 @@ import { CrashGuard } from './components/Crash';
 import '@fontsource-variable/plus-jakarta-sans/wght.css';
 import './styles.css';
 
+(window as unknown as { __fiscusStarted: string }).__fiscusStarted = 'bundle running';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <CrashGuard>
