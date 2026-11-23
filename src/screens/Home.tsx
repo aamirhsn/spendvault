@@ -36,8 +36,6 @@ export function Home() {
   const now = new Date();
   const thisMonth = monthKey(today);
   const lastMonth = addMonths(thisMonth, -1);
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = daysInMonth - now.getDate() + 1;
 
   const stats = useMemo(() => {
     const dom = Number(today.slice(8, 10));
