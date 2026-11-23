@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
-import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, prettyDate, todayISO } from '../lib/format';
+import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, todayISO } from '../lib/format';
 import { SERIES, SERIES_OTHER } from '../lib/categories';
-import { Bars, Donut, type Point } from '../components/Charts';
-import { useDeleteSpend, TxnRow } from '../components/TxnRow';
+import { Bars, type Point } from '../components/Charts';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
@@ -24,8 +23,7 @@ const ordinal = (n: number) => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10
 export function Home() {
   const { data, biometricEnabled, vault, requestUnlock } = useStore();
   const nav = useNav();
-  const delSpend = useDeleteSpend();
-  const { transactions: txns, cards, giftCards, merchants, settings } = data;
+  const { transactions: txns, cards, giftCards, settings } = data;
   const cur = settings.currency;
   const hide = settings.hideAmounts;
   const fmt = (n: number) => money(n, cur, { hide, decimals: false });
@@ -110,13 +108,6 @@ export function Home() {
     [txns, giftCards, dues, stats, hide, cur],
   );
 
-  const recent = txns.slice(0, 8);
-  const recentGroups: [string, typeof recent][] = [];
-  for (const t of recent) {
-    const g = recentGroups.find(([d]) => d === t.date);
-    if (g) g[1].push(t);
-    else recentGroups.push([t.date, [t]]);
-  }
 
   return (
     <div className="screen">
@@ -229,36 +220,9 @@ export function Home() {
           </section>
         )}
 
-        <div className="cols">
-          <section>
-            <div className="section-label">Categories · {monthLabel(thisMonth, true)}</div>
-            <div className="card pad">
-              {stats.slices.length ? <Donut slices={stats.slices} format={fmt} centerLabel="Total" size={128} /> : <p className="muted small" style={{ margin: 0 }}>No spends this month yet.</p>}
-            </div>
-          </section>
-          <section>
-            <div className="section-label">Last 6 months</div>
-            <div className="card pad" style={{ paddingTop: 26 }}><Bars data={monthly} format={fmtC} highlight={monthly.length - 1} height={128} /></div>
-          </section>
-        </div>
-
         <section>
-          <div className="section-label">Recent {txns.length > 0 && <button className="link" onClick={() => nav.go('spends')}>See all <IChevron width={13} /></button>}</div>
-          {recentGroups.length ? (
-            <div className="card" style={{ overflow: 'hidden' }}>
-              {recentGroups.map(([date, list]) => (
-                <div key={date}>
-                  <div className="row between" style={{ padding: '14px 16px 4px' }}>
-                    <b style={{ fontSize: 15 }}>{prettyDate(date)}</b>
-                    <span className="foot muted num">{fmt(list.reduce((a, t) => a + t.amount, 0))}</span>
-                  </div>
-                  {list.map((t) => <TxnRow key={t.id} t={t} cards={cards} merchants={merchants} settings={settings} onClick={() => nav.editSpend(t)} onDelete={() => delSpend(t)} />)}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="group"><NavRow title="Log your first spend" subtitle="Tap + to add one" onClick={() => nav.newSpend()} /></div>
-          )}
+          <div className="section-label">Last 6 months</div>
+          <div className="card pad" style={{ paddingTop: 26 }}><Bars data={monthly} format={fmtC} highlight={monthly.length - 1} height={128} /></div>
         </section>
       </div>
       <BudgetsSheet open={budgets} onClose={() => setBudgets(false)} />

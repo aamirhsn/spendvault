@@ -67,17 +67,17 @@ export function AreaChart({ data, format, height = 170, color = 'var(--s1)' }: {
         <line className="gridline" x1={0} x2={W} y1={H - padB} y2={H - padB} vectorEffect="non-scaling-stroke" />
         {path && <path d={`${path} L${x(data.length - 1)},${H - padB} L${x(0)},${H - padB} Z`} fill={`url(#g${id})`} />}
         {path && <path d={path} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
-        {hover != null && <line x1={x(hover)} x2={x(hover)} y1={padT} y2={H - padB} stroke="var(--text-3)" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
+        {hover != null && <line x1={x(hover)} x2={x(hover)} y1={padT} y2={H - padB} stroke="var(--label-3)" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
       </svg>
       {/* HTML overlays so text and dots don't stretch with the SVG */}
       {data.map((d, i) =>
         d.tick ? (
-          <span key={i} className="axis-tick" style={{ position: 'absolute', left: `${(x(i) / W) * 100}%`, bottom: 0, transform: `translateX(${i === 0 ? '0' : i === data.length - 1 ? '-100%' : '-50%'})`, fontSize: 10.5, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+          <span key={i} className="axis-tick" style={{ position: 'absolute', left: `${(x(i) / W) * 100}%`, bottom: 0, transform: `translateX(${i === 0 ? '0' : i === data.length - 1 ? '-100%' : '-50%'})`, fontSize: 10.5, color: 'var(--label-3)', whiteSpace: 'nowrap' }}>
             {d.tick}
           </span>
         ) : null,
       )}
-      <span style={{ position: 'absolute', right: 2, top: `${(y(max) / H) * 100}%`, transform: 'translateY(-110%)', fontSize: 10.5, color: 'var(--text-3)' }}>{format(max)}</span>
+      <span style={{ position: 'absolute', right: 2, top: `${(y(max) / H) * 100}%`, transform: 'translateY(-110%)', fontSize: 10.5, color: 'var(--label-3)' }}>{format(max)}</span>
       {h && hover != null && (
         <>
           <span style={{ position: 'absolute', left: `${(x(hover) / W) * 100}%`, top: `${(y(h.value) / H) * 100}%`, width: 10, height: 10, borderRadius: 9, background: color, transform: 'translate(-50%,-50%)', boxShadow: '0 0 0 2px var(--bg)' }} />
@@ -110,7 +110,7 @@ export function Donut({ slices, format, centerLabel, size = 150 }: { slices: Sli
     <div className="row" style={{ gap: 18, alignItems: 'center' }}>
       <div style={{ position: 'relative', width: size, height: size, flex: 'none' }}>
         <svg viewBox="0 0 110 110" width={size} height={size} style={{ transform: 'rotate(-90deg)' }} role="img" aria-label="Spending by category">
-          <circle cx="55" cy="55" r={(R + r) / 2} fill="none" stroke="var(--hair)" strokeWidth={sw} />
+          <circle cx="55" cy="55" r={(R + r) / 2} fill="none" stroke="var(--sep)" strokeWidth={sw} />
           {total > 0 &&
             slices.map((s, i) => {
               const len = (s.value / total) * C;
@@ -156,7 +156,7 @@ export function Bars({ data, format, highlight, height = 150 }: { data: Point[];
     <div className="chart" style={{ height: height + 22 }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height, borderBottom: '1px solid var(--grid)' }}>
         <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', borderTop: '1px dashed var(--grid)' }} />
-        <span style={{ position: 'absolute', right: 0, top: -14, fontSize: 10.5, color: 'var(--text-3)' }}>{format(max)}</span>
+        <span style={{ position: 'absolute', right: 0, top: -14, fontSize: 10.5, color: 'var(--label-3)' }}>{format(max)}</span>
       </div>
       <div style={{ position: 'absolute', inset: `0 0 22px 0`, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
         {data.map((d, i) => {
@@ -167,7 +167,7 @@ export function Bars({ data, format, highlight, height = 150 }: { data: Point[];
               onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)} onClick={() => setHover(hover === i ? null : i)}>
               <div style={{
                 width: 'min(34px, 62%)', height: `${Math.max(d.value > 0 ? 2 : 0, pct)}%`, borderRadius: '4px 4px 0 0',
-                background: on ? 'linear-gradient(180deg, var(--accent-2), var(--accent))' : 'var(--s1)',
+                background: on ? 'var(--tint)' : 'var(--s1)',
                 opacity: hover == null || hover === i ? (on ? 1 : 0.75) : 0.4, transition: 'height .7s var(--ease), opacity .2s',
               }} />
               {hover === i && (
@@ -182,7 +182,7 @@ export function Bars({ data, format, highlight, height = 150 }: { data: Point[];
       </div>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, display: 'flex', gap: 2 }}>
         {data.map((d, i) => (
-          <span key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10.5, color: highlight === i ? 'var(--text)' : 'var(--text-3)', fontWeight: highlight === i ? 650 : 400 }}>{d.tick ?? ''}</span>
+          <span key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10.5, color: highlight === i ? 'var(--label)' : 'var(--label-3)', fontWeight: highlight === i ? 650 : 400 }}>{d.tick ?? ''}</span>
         ))}
       </div>
     </div>
@@ -200,7 +200,7 @@ export function ShareBars({ rows, format }: { rows: { label: string; value: numb
             <span className="ellipsis">{r.label}{r.sub && <span className="faint"> · {r.sub}</span>}</span>
             <b className="num">{format(r.value)}</b>
           </div>
-          <div style={{ height: 8, borderRadius: 8, background: 'var(--hair)', overflow: 'hidden' }}>
+          <div style={{ height: 8, borderRadius: 8, background: 'var(--sep)', overflow: 'hidden' }}>
             <div style={{ width: `${(r.value / max) * 100}%`, height: '100%', borderRadius: 8, background: r.color ?? 'var(--s1)', transition: 'width .7s var(--ease)' }} />
           </div>
         </div>
