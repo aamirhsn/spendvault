@@ -11,6 +11,7 @@ export function SafeToSpend(p: {
   limit: number; // budget for the month (0 = not set)
   spent: number; // spent this month within the budget's scope
   spentToday: number; // spent today within the budget's scope
+  week: number[]; // last 7 days (oldest first, today last) within the budget's scope
   monthTotal: number;
   delta: number | null; // % vs last month to date
   fmt: Fmt;
@@ -24,43 +25,61 @@ export function SafeToSpend(p: {
   const allowance = Math.max(0, p.limit - (p.spent - p.spentToday)) / daysLeft;
   const leftToday = allowance - p.spentToday;
   const expected = (p.limit * dom) / dim;
-  const status = !p.limit ? null : remaining < 0 ? { t: 'Over budget', c: 'var(--red)' } : p.spent > expected * 1.1 ? { t: 'Spending fast', c: 'var(--orange)' } : { t: 'On track', c: 'var(--tint)' };
-  const frac = p.limit ? Math.max(0, Math.min(1, remaining / p.limit)) : 0;
-  const R = 62, C = 2 * Math.PI * R;
+  const paceGap = expected - p.spent; // + under pace, − over pace
+  const tone = !p.limit ? 'none' : remaining < 0 ? 'bad' : p.spent > expected * 1.1 ? 'warn' : 'good';
+  const label = { none: '', bad: 'Over budget', warn: 'Spending fast', good: 'On track' }[tone];
+  const used = p.limit ? Math.max(0, Math.min(1, p.spent / p.limit)) : 0;
+  const paceAt = dom / dim;
+  const R = 60, C = 2 * Math.PI * R;
+  const tick = (paceAt * 360 - 90) * (Math.PI / 180);
+  const daily = p.monthTotal / Math.max(1, dom);
+  const weekMax = Math.max(...p.week, Math.min(allowance, Math.max(...p.week) * 1.6), 1);
+  const dayNames = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 6 + i);
+    return d.toLocaleDateString(undefined, { weekday: 'narrow' });
+  });
 
   return (
-    <div className="card safe">
+    <div className={`card safe tone-${tone}`}>
+      <div className="safe-head">
+        <span className="label-xs">Safe to spend today</span>
+        {label && <span className="safe-pill">{label}</span>}
+      </div>
       <div className="safe-top">
         <button className="safe-ring" onClick={p.onBudget} aria-label="Edit budget">
           <svg viewBox="0 0 150 150">
             <circle cx="75" cy="75" r={R} className="track" />
             {p.limit > 0 && (
-              <circle cx="75" cy="75" r={R} className="fill" style={{ stroke: status!.c }} strokeDasharray={`${C * frac} ${C}`} transform="rotate(-90 75 75)" />
+              <>
+                <circle cx="75" cy="75" r={R} className="fill" strokeDasharray={`${Math.max(0.001, C * used)} ${C}`} transform="rotate(-90 75 75)" />
+                <circle className="pace" cx={75 + R * Math.cos(tick)} cy={75 + R * Math.sin(tick)} r="6"><title>Where your spending would be at an even pace</title></circle>
+              </>
             )}
           </svg>
           <div className="safe-c">
             {p.limit ? (
               <>
-                <b style={{ color: leftToday < 0 ? 'var(--red)' : undefined }}>{p.fmt(Math.abs(leftToday))}</b>
-                <span>{leftToday < 0 ? 'over today' : 'safe today'}</span>
+                <b className={leftToday < 0 ? 'neg' : ''}>{p.fmt(Math.abs(leftToday))}</b>
+                <span>{leftToday < 0 ? 'over today' : 'left today'}</span>
               </>
             ) : (
               <>
                 <b className="muted">—</b>
-                <span>safe today</span>
+                <span>no budget</span>
               </>
             )}
           </div>
         </button>
         <div className="grow" style={{ minWidth: 0 }}>
-          {p.limit && status ? (
+          {p.limit ? (
             <>
-              <span className="safe-pill" style={{ color: status.c }}>● {status.t}</span>
-              <div className="safe-v">{p.fmt(Math.abs(remaining))} {remaining < 0 ? 'over' : 'left'}</div>
-              <div className="safe-of">of {p.fmt(p.limit)} budget</div>
-              <div className="safe-days">
-                {daysLeft === 1 ? 'Last day of the month' : `${daysLeft} days to go`}
+              <div className="safe-v">{p.fmt(Math.abs(remaining))} <span>{remaining < 0 ? 'over' : 'left'}</span></div>
+              <div className="safe-of">of {p.fmt(p.limit)} · {Math.round(used * 100)}% used</div>
+              <div className={`safe-pace ${paceGap >= 0 ? 'ok' : 'hot'}`}>
+                {paceGap >= 0 ? '▼' : '▲'} {p.fmt(Math.abs(paceGap))} {paceGap >= 0 ? 'under pace' : 'over pace'}
               </div>
+              <div className="safe-days">{daysLeft === 1 ? 'Last day of the month' : `${daysLeft} days to go this month`}</div>
             </>
           ) : (
             <>
@@ -71,17 +90,37 @@ export function SafeToSpend(p: {
           )}
         </div>
       </div>
-      <div className="safe-split">
+
+      <div className="safe-week" aria-label="Last 7 days">
+        <div className="safe-plot">
+          {p.limit > 0 && <div className="safe-allow" style={{ bottom: `${Math.min(100, (allowance / weekMax) * 100)}%` }}><span>{p.fmt(allowance)}/day</span></div>}
+          {p.week.map((v, i) => (
+            <div key={i} className={`safe-col${i === 6 ? ' today' : ''}`} title={`${i === 6 ? 'Today' : dayNames[i]}: ${p.fmt(v)}`}>
+              <div className={`safe-bar${p.limit && v > allowance ? ' over' : ''}${v <= 0 ? ' zero' : ''}`} style={{ height: v > 0 ? `${Math.max(8, (v / weekMax) * 100)}%` : undefined }} />
+            </div>
+          ))}
+        </div>
+        <div className="safe-days7">
+          {p.week.map((_, i) => <span key={i} className={i === 6 ? 'today' : ''}>{i === 6 ? 'Today' : dayNames[i]}</span>)}
+        </div>
+        {p.week.every((v) => v <= 0) && <div className="safe-empty">No spends in the last 7 days</div>}
+      </div>
+
+      <div className="safe-split three">
         <div>
-          <div className="label-xs">Spent today</div>
+          <div className="label-xs">Today</div>
           <div className="safe-n">{p.fmt(p.spentToday)}</div>
         </div>
         <div>
           <div className="label-xs">This month</div>
           <div className="safe-n">
-            {p.fmt(p.monthTotal)}{' '}
-            {p.delta != null && <small className={p.delta > 0 ? 'neg' : 'pos'}>{p.delta > 0 ? '↑' : '↓'}{Math.abs(p.delta).toFixed(0)}%</small>}
+            {p.fmt(p.monthTotal)}
+            {p.delta != null && <small className={p.delta > 0 ? 'neg' : 'pos'}> {p.delta > 0 ? '↑' : '↓'}{Math.abs(p.delta).toFixed(0)}%</small>}
           </div>
+        </div>
+        <div>
+          <div className="label-xs">Daily avg</div>
+          <div className="safe-n">{p.fmt(daily)}</div>
         </div>
       </div>
     </div>
