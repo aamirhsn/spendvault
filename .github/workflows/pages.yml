@@ -3,6 +3,10 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # The repo's Pages source also publishes raw files from the branch ("pages build and
+  # deployment"). If that finishes after us the site serves unbuilt source = blank page.
+  # page_build fires when that branch build completes, so the real build always lands last.
+  page_build:
   workflow_dispatch:
 
 permissions:
