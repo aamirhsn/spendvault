@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useNav } from '../lib/nav';
-import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, parseISO, todayISO } from '../lib/format';
+import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, todayISO } from '../lib/format';
 import { SERIES, SERIES_OTHER } from '../lib/categories';
 import { Bars, type Point } from '../components/Charts';
 import { BudgetsSheet, budgetColor } from '../components/Budgets';
@@ -83,22 +83,9 @@ export function Home() {
     .sort((a, b) => b.spent / b.limit - a.spent / a.limit);
   const limitTotal = budget || catBudgets.reduce((a, b) => a + b.limit, 0);
   const spentTotal = budget ? stats.month : catBudgets.reduce((a, b) => a + b.spent, 0);
-  const delta = stats.lastToDate > 0 ? ((stats.month - stats.lastToDate) / stats.lastToDate) * 100 : null;
 
   const inScope = (cat: string) => !!budget || catBudgets.some((b) => b.name === cat);
   const spentToday = txns.filter((t) => t.date === today && (limitTotal ? inScope(t.category) : true)).reduce((a, t) => a + t.amount, 0);
-  const week = useMemo(() => {
-    const out = [0, 0, 0, 0, 0, 0, 0];
-    const start = parseISO(today);
-    start.setDate(start.getDate() - 6);
-    const from = todayISO(start);
-    for (const t of txns) {
-      if (t.date < from || t.date > today || (limitTotal && !inScope(t.category))) continue;
-      out[Math.round((parseISO(t.date).getTime() - start.getTime()) / 86_400_000)] += t.amount;
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txns, today, limitTotal, budget, catBudgets.length]);
   const insights = useMemo(
     () => buildInsights({ txns, giftCards, dues, monthTotal: stats.month, lastToDate: stats.lastToDate, top: stats.top, fmt, go: { cards: () => nav.go('cards'), gifts: () => nav.go('gifts'), spends: () => nav.go('spends') } }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,11 +107,11 @@ export function Home() {
 
       <div className="greet" style={{ margin: '0 4px 20px' }}>
         <h1>{greeting()}{settings.displayName ? `, ${settings.displayName}` : ''}</h1>
-        <p>Today is {ordinal(now.getDate())} {now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}.{daysLeft > 1 ? ` ${daysLeft} days left this month.` : ' Last day of the month.'}</p>
+        <p>Today is {ordinal(now.getDate())} {now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}.</p>
       </div>
 
       <div className="stack-lg">
-        <SafeToSpend limit={limitTotal} spent={spentTotal} spentToday={spentToday} week={week} monthTotal={stats.month} delta={delta} fmt={fmt} onBudget={() => setBudgets(true)} />
+        <SafeToSpend limit={limitTotal} spent={spentTotal} spentToday={spentToday} fmt={fmt} onBudget={() => setBudgets(true)} />
         <Insights items={insights} />
 
         {vault === 'none' && (data.cards.length > 0 || data.giftCards.length > 0) && (
