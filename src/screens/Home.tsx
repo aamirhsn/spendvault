@@ -76,7 +76,6 @@ export function Home() {
         .sort((a, b) => (b.c.overdue ?? 0) - (a.c.overdue ?? 0) || a.days - b.days),
     [cards],
   );
-  const dueTotal = dues.reduce((a, d) => a + d.owed, 0);
   const expiring = giftCards.filter((g) => !g.archived && g.balance > 0 && g.expiry && daysUntil(parseISO(g.expiry)) >= 0 && daysUntil(parseISO(g.expiry)) <= 30);
 
   const budget = settings.monthlyBudget;
@@ -161,29 +160,10 @@ export function Home() {
           </section>
         )}
 
-        {(dues.length > 0 || expiring.length > 0) && (
+        {expiring.length > 0 && (
           <section>
-            <div className="section-label">Coming up <button className="link" onClick={() => nav.go('cards')}>Cards <IChevron width={13} /></button></div>
+            <div className="section-label">Expiring gift cards <button className="link" onClick={() => nav.go('gifts')}>Gift Cards <IChevron width={13} /></button></div>
             <div className="card">
-              {dues.length > 0 && (
-                <div style={{ padding: '16px 16px 6px' }}>
-                  <div className="label-xs">Card bills due</div>
-                  <div className="giant num neg" style={{ fontSize: 34, marginTop: 6 }}>{fmt(dueTotal)}</div>
-                </div>
-              )}
-              {dues.map(({ c, due, days, owed }) => (
-                <button key={c.id} className="cell" style={{ ['--inset' as string]: '68px' }} onClick={() => nav.go('cards')}>
-                  <span className="logo-round">{hasLogo(c.bank, data.logos) ? <Logo name={c.bank} preferMark /> : <b>{c.bank.slice(0, 1)}</b>}</span>
-                  <span className="grow">
-                    <div className="t ellipsis" style={{ fontWeight: 500 }}>{c.name || c.bank}</div>
-                    <div className="st">Due {due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ••{c.last4}</div>
-                  </span>
-                  <span className="amt-col">
-                    <div className="a neg">{fmt(owed)}</div>
-                    <div style={{ marginTop: 3 }}>{(c.overdue ?? 0) > 0 ? <span className="tag bad">Overdue</span> : days <= 1 ? <span className="tag warn">{days === 0 ? 'Today' : 'Tomorrow'}</span> : days <= 7 ? <span className="tag warn">{days} days</span> : <span className="tag gray">{days} days</span>}</div>
-                  </span>
-                </button>
-              ))}
               {expiring.map((g) => (
                 <button key={g.id} className="cell" style={{ ['--inset' as string]: '68px' }} onClick={() => nav.go('gifts')}>
                   <span className="logo-round">{hasLogo(g.brand, data.logos) ? <Logo name={g.brand} /> : <b>{g.brand.slice(0, 1)}</b>}</span>
