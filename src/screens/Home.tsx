@@ -10,8 +10,8 @@ import { Logo, hasLogo } from '../lib/logos';
 import { IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
 import { CBtn, NavRow, bioName } from '../components/ui';
 import { Insights, SafeToSpend, buildInsights } from '../components/Pulse';
+import { CardMap } from '../components/CardMap';
 import { TodoEditor, TodoFab, TodoSheet, sortTodos } from '../components/Todos';
-import { cardFinishKey, finishFor } from '../lib/finishes';
 import type { Todo } from '../lib/types';
 
 function greeting() {
@@ -169,20 +169,7 @@ export function Home() {
         {byCard.length > 0 && (
           <section>
             <div className="section-label">Spend by card · {monthLabel(thisMonth, true)} <button className="link" onClick={() => nav.go('cards')}>Cards <IChevron width={13} /></button></div>
-            <div className="card" style={{ padding: '6px 0' }}>
-              {byCard.map(({ c, spent, count }) => (
-                <div key={c.id} className="cell" style={{ ['--inset' as string]: '66px', display: 'grid', gridTemplateColumns: 'auto 1fr auto', rowGap: 6 }}>
-                  <span className="mini-card" style={{ background: finishFor(cardFinishKey(c)).bg, width: 38, height: 25, gridRow: 'span 2' }} />
-                  <span className="ellipsis" style={{ fontWeight: 500 }}>{c.name || c.bank} <span className="muted">••{c.last4}</span></span>
-                  <b className="num" style={{ textAlign: 'right' }}>{fmt(spent)}</b>
-                  <div className="bar" style={{ gridColumn: '2 / 4', height: 5 }}><div style={{ width: `${(spent / byCard[0].spent) * 100}%`, background: 'var(--s1)' }} /></div>
-                  <span />
-                  <span className="foot muted" style={{ gridColumn: '2 / 4', marginTop: -2 }}>
-                    {count} spend{count === 1 ? '' : 's'} · {Math.round((spent / cardTotal) * 100)}% of card spends{c.creditLimit ? ` · ${((spent / c.creditLimit) * 100).toFixed(1)}% of limit` : ''}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <CardMap items={byCard} total={cardTotal} fmt={fmt} onOpen={() => nav.go('cards')} />
           </section>
         )}
 
