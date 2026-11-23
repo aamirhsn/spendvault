@@ -7,7 +7,8 @@
 :root {
   color-scheme: light;
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
-  --rounded: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  /* Display face for titles, amounts and card printing; body text stays SF. */
+  --display: 'Plus Jakarta Sans Variable', -apple-system, 'SF Pro Display', system-ui, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, monospace;
 
   --bg: #f2f2f7;               /* systemGroupedBackground */
@@ -209,7 +210,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 /* ---------- Home widgets ---------- */
 .hero { padding: 18px; }
 .hero .k { font-size: 15px; font-weight: 600; color: var(--label-2); }
-.hero .big { font-family: var(--rounded); font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin: 4px 0 2px; }
+.hero .big { font-family: var(--display); font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin: 4px 0 2px; }
 .pill { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px; border-radius: 99px; font-size: 13px; font-weight: 600; }
 .pill.up { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
 .pill.down { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
@@ -221,7 +222,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .bar > div { height: 100%; border-radius: 6px; background: var(--tint); transition: width .6s var(--ease); }
 .stat { padding: 14px 16px; }
 .stat .k { font-size: 13px; color: var(--label-2); font-weight: 600; }
-.stat .v { font-family: var(--rounded); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; }
+.stat .v { font-family: var(--display); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; }
 .stat .s { font-size: 13px; color: var(--label-2); margin-top: 1px; }
 
 /* ---------- Charts ---------- */
@@ -290,8 +291,8 @@ button.cell:active, a.cell:active { background: var(--fill); }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
 .amount-entry { display: flex; align-items: baseline; justify-content: center; gap: 4px; padding: 6px 0 2px; }
-.amount-entry span { font-family: var(--rounded); font-size: 34px; font-weight: 600; color: var(--label-2); }
-.amount-entry input { font-family: var(--rounded); font-size: 46px; font-weight: 700; letter-spacing: -0.03em; border: none; outline: none; background: transparent; text-align: left; min-width: 0.9em; max-width: 80vw; padding: 0; caret-color: var(--tint); }
+.amount-entry span { font-family: var(--display); font-size: 34px; font-weight: 600; color: var(--label-2); }
+.amount-entry input { font-family: var(--display); font-size: 46px; font-weight: 700; letter-spacing: -0.03em; border: none; outline: none; background: transparent; text-align: left; min-width: 0.9em; max-width: 80vw; padding: 0; caret-color: var(--tint); }
 .amount-entry input::placeholder { color: var(--label-3); }
 
 /* ---------- Payment cards (Wallet-style) ---------- */
@@ -354,7 +355,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .logo-tile .mono-l { font-weight: 800; font-size: 19px; letter-spacing: -0.04em; }
 .gcard .exp { font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 99px; background: rgba(0,0,0,.18); white-space: nowrap; }
 .gcard .brand { font-size: 13px; font-weight: 600; opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gcard .bal { font-family: var(--rounded); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.gcard .bal { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
 .gcard .of { font-size: 12px; opacity: .75; }
 .gcard .pbar { height: 3px; border-radius: 3px; background: rgba(255,255,255,.3); margin-top: 7px; overflow: hidden; }
 .gcard .pbar > div { height: 100%; border-radius: 3px; background: currentColor; }
@@ -368,7 +369,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .scanner .reticle { position: absolute; inset: 16%; border-radius: 26px; box-shadow: 0 0 0 999px rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.9); }
 .scanner .placeholder { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: #fff; background: #111; }
-.mcc-code { font-family: var(--rounded); font-size: 44px; font-weight: 800; letter-spacing: -0.02em; color: var(--tint); line-height: 1; }
+.mcc-code { font-family: var(--display); font-size: 44px; font-weight: 800; letter-spacing: -0.02em; color: var(--tint); line-height: 1; }
 
 /* ---------- Lock screen ---------- */
 .lock { min-height: 100dvh; display: grid; place-items: center; padding: calc(var(--safe-t) + 24px) 20px calc(var(--safe-b) + 24px); }
@@ -442,7 +443,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .split .cellx { padding: 0 14px; min-width: 0; }
 .split .k { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--label-2); font-weight: 500; }
 .split .k svg { width: 16px; height: 16px; }
-.split .v { font-family: var(--rounded); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.split .v { font-family: var(--display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .split .s { font-size: 13px; color: var(--label-2); margin-top: 1px; }
 
 /* spending heatmap */
@@ -453,7 +454,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .heat i.future { opacity: 0; }
 
 /* big remaining number */
-.giant { font-family: var(--rounded); font-size: 46px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
+.giant { font-family: var(--display); font-size: 46px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
 .giant small { font-family: var(--font); font-size: 18px; font-weight: 500; color: var(--label-2); letter-spacing: -0.01em; margin-left: 8px; }
 .bar.thick { height: 10px; border-radius: 10px; } .bar.thick > div { border-radius: 10px; }
 
@@ -484,7 +485,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .due-strip > div { padding: 0 8px; min-width: 0; }
 .due-strip > div + div { border-left: .5px solid var(--sep); }
 .due-strip label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--label-2); }
-.due-strip b { display: block; font-family: var(--rounded); font-size: 18px; font-weight: 700; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.due-strip b { display: block; font-family: var(--display); font-size: 18px; font-weight: 700; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .due-strip span { display: block; font-size: 12.5px; color: var(--label-2); margin-top: 2px; white-space: nowrap; }
 .due-strip span.bad { color: var(--red); font-weight: 600; } .due-strip span.warn { color: var(--orange); font-weight: 600; }
 
@@ -544,7 +545,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .entry { display: flex; flex-direction: column; gap: 14px; min-height: calc(var(--vvh, 100dvh) - var(--safe-t) - 110px); }
 .entry-amount { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px 8px; border-radius: 26px; min-height: 150px;
   background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--hc) 18%, var(--card)), var(--card) 75%); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--hc) 25%, transparent); }
-.entry-num { font-family: var(--rounded); font-size: clamp(44px, 15vw, 68px); font-weight: 750; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 4px; max-width: 100%; overflow: hidden; }
+.entry-num { font-family: var(--display); font-size: clamp(44px, 15vw, 68px); font-weight: 750; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 4px; max-width: 100%; overflow: hidden; }
 .entry-num .cur { font-size: .55em; font-weight: 600; color: var(--label-2); }
 .entry-num.empty { color: var(--label-3); }
 .entry-desc { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; color: var(--label-2); padding: 6px 12px; border-radius: 99px; background: var(--fill); max-width: 90%; }
@@ -559,7 +560,7 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .tagbtn.ghost svg { color: var(--label-2); }
 
 .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.kp { height: 54px; border-radius: 16px; font-family: var(--rounded); font-size: 26px; font-weight: 550; background: var(--card); box-shadow: 0 1px 1px rgba(0,0,0,.05); transition: background .08s, transform .15s var(--spring); }
+.kp { height: 54px; border-radius: 16px; font-family: var(--display); font-size: 26px; font-weight: 550; background: var(--card); box-shadow: 0 1px 1px rgba(0,0,0,.05); transition: background .08s, transform .15s var(--spring); }
 .kp:active { background: var(--fill-2); transform: scale(.96); }
 @media (min-height: 800px) { .kp { height: 60px; } }
 .entry-save { width: 100%; height: 54px; font-size: 17px; }
@@ -615,3 +616,32 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .toast-act { margin-left: 4px; padding: 6px 12px; border-radius: 99px; background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint); font-weight: 700; font-size: 14px; flex: none; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, -16px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0); } }
 .toast.liquid { background: color-mix(in srgb, var(--card) 94%, transparent); box-shadow: 0 12px 32px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08); border: .5px solid var(--sep); z-index: 300; }
+
+
+/* ================= Typography ================= */
+.topbar h1, .greet h1, .section-h h2, .todo-title, .sheet-head h3, .empty h3, .lock h1 { font-family: var(--display); }
+.topbar h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.035em; }
+.greet h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.12; }
+.greet p { font-size: 15px; }
+.sheet-head h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.section-label { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.label-xs, .due-strip label, .pc-sub, .gcard .bal-l { font-family: var(--display); }
+.hero .big { font-weight: 800; letter-spacing: -0.035em; }
+.split .v, .stat .v, .giant, .due-strip b, .gcard .bal, .entry-num, .amount-entry input, .amount-entry span { font-family: var(--display); font-variant-numeric: proportional-nums; }
+.amt-col .a, .legend-row .vl, .cell .amt { font-family: var(--display); font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: proportional-nums; }
+.cell .t { letter-spacing: -0.015em; }
+.btn, .tagbtn, .cchip, .chip, .seg button, .tab span, .fab-item > span:first-child, .toast-txt b { font-family: var(--display); }
+.btn { font-weight: 700; letter-spacing: -0.01em; }
+.tab span { font-weight: 700; letter-spacing: 0; }
+
+/* Card printing: spaced caps like real premium cards */
+.pcard { font-family: var(--display); }
+.pc-product { font-size: 3.1cqi; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; opacity: .92; }
+.pc-bank .wordmark { font-family: var(--display); font-weight: 800; letter-spacing: -0.01em; }
+.pc-num { font-family: var(--display); font-size: 5.4cqi; font-weight: 600; letter-spacing: .14em; font-variant-numeric: proportional-nums; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
+.pc-last4 { font-family: var(--display); font-size: 4.2cqi; font-weight: 600; letter-spacing: .18em; font-variant-numeric: proportional-nums; }
+.pc-sub { font-size: 2.6cqi; font-weight: 700; letter-spacing: .16em; }
+.gcard .brand { font-family: var(--display); font-weight: 700; letter-spacing: -0.01em; }
+/* Jakarta's tabular '1' has a foot that reads as typewriter; keep display numbers proportional. */
+.big, .giant, .v, .entry-num, .pcard, .pcard *, .due-strip b, .gcard .bal, .amt-col .a, .cell .amt, .legend-row .vl, .topbar h1, .greet h1 { font-variant-numeric: proportional-nums !important; font-feature-settings: 'tnum' 0 !important; }
+.topbar h1, .greet h1, .section-h h2, .todo-title, .sheet-head h3, .empty h3, .lock h1, .section-label, .label-xs, .due-strip label, .gcard, .gcard *, .btn, .tagbtn, .cchip, .chip, .seg button, .tab span, .toast-txt b, .amount-entry input, .amount-entry span, .split .v, .stat .v, .hero .big { font-feature-settings: 'tnum' 0; }
