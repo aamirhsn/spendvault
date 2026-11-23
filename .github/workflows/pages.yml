@@ -3,10 +3,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  # The repo's Pages source also publishes raw files from the branch ("pages build and
-  # deployment"). If that finishes after us the site serves unbuilt source = blank page.
-  # page_build fires when that branch build completes, so the real build always lands last.
-  page_build:
   workflow_dispatch:
 
 permissions:
@@ -39,5 +35,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # The repo's Pages source also publishes the raw branch files ("pages build and
+      # deployment", ~45s). If that lands after us the site serves unbuilt source, i.e. a
+      # blank page. Wait so the real build is always published last.
+      # Permanent fix: Settings → Pages → Source → "GitHub Actions".
+      - run: sleep 75
       - id: deployment
         uses: actions/deploy-pages@v4
