@@ -5,66 +5,6 @@ import { daysUntil, monthLabel, parseISO, prettyDate, todayISO } from '../lib/fo
 
 type Fmt = (n: number) => string;
 
-/* ============ Safe to spend today ============ */
-
-export function SafeToSpend(p: {
-  limit: number; // budget for the month (0 = not set)
-  spent: number; // spent this month within the budget's scope
-  spentToday: number; // spent today within the budget's scope
-  hasBudget: boolean; // any budget set (the everyday part can be 0 if it's all fixed costs)
-  fixed?: { reserved: number; paid: number }; // fixed costs set aside before the daily amount
-  fmt: Fmt;
-  onBudget(): void;
-}) {
-  const now = new Date();
-  const dom = now.getDate();
-  const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = dim - dom + 1;
-  const remaining = p.limit - p.spent;
-  const allowance = Math.max(0, p.limit - (p.spent - p.spentToday)) / daysLeft;
-  const leftToday = allowance - p.spentToday;
-  const expected = (p.limit * dom) / dim;
-  const tone = !p.limit ? 'none' : remaining < 0 ? 'bad' : p.spent > expected * 1.1 ? 'warn' : 'good';
-  const label = { none: '', bad: 'Over budget', warn: 'Spending fast', good: 'On track' }[tone];
-  const used = p.limit ? Math.min(1, p.spent / p.limit) : 0;
-
-  if (!p.hasBudget) {
-    return (
-      <button className="card safe tone-none" onClick={p.onBudget}>
-        <span className="label-xs">Safe to spend today</span>
-        <div className="safe-hero muted">—</div>
-        <div className="safe-foot"><span>Set a monthly budget to see a daily amount</span><b className="safe-link">Set budget ›</b></div>
-      </button>
-    );
-  }
-
-  return (
-    <button className={`card safe tone-${tone}`} onClick={p.onBudget} aria-label="Safe to spend today, edit budget">
-      <div className="safe-head">
-        <span className="label-xs">Safe to spend today</span>
-        <span className="safe-pill">{label}</span>
-      </div>
-      <div className={`safe-hero${leftToday < 0 ? ' neg' : ''}`}>
-        {p.fmt(Math.abs(leftToday))}
-        {leftToday < 0 && <small> over</small>}
-      </div>
-      <div className="safe-track" role="img" aria-label={`${Math.round(used * 100)}% of budget used; even pace would be ${Math.round((dom / dim) * 100)}%`}>
-        <i style={{ width: `${Math.max(used > 0 ? 2 : 0, used * 100)}%` }} />
-        <b style={{ left: `${(dom / dim) * 100}%` }} />
-      </div>
-      <div className="safe-foot">
-        <span><strong>{p.fmt(Math.abs(remaining))}</strong> {remaining < 0 ? 'over' : 'left'} of {p.fmt(p.limit)}</span>
-        <span>{daysLeft === 1 ? 'Last day' : `${daysLeft} days left`}</span>
-      </div>
-      {p.fixed && (
-        <div className="safe-fixed">
-          {p.fmt(p.fixed.reserved)} set aside for fixed costs · {p.fixed.paid >= p.fixed.reserved ? 'all paid' : `${p.fmt(p.fixed.paid)} paid`}
-        </div>
-      )}
-    </button>
-  );
-}
-
 /* ============ Insight cards ============ */
 
 interface Insight {

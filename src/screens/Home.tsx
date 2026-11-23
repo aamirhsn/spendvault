@@ -8,7 +8,8 @@ import { BudgetsSheet, budgetColor, fixedCats } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
 import { CBtn, NavRow, bioName } from '../components/ui';
-import { Insights, SafeToSpend, buildInsights } from '../components/Pulse';
+import { Insights, buildInsights } from '../components/Pulse';
+import { MonthCal } from '../components/MonthCal';
 import { UtilMatrix } from '../components/UtilMatrix';
 import { TodoEditor, TodoFab, TodoSheet, sortTodos } from '../components/Todos';
 import type { Todo } from '../lib/types';
@@ -93,7 +94,6 @@ export function Home() {
   const varSpent = budget
     ? [...stats.byCat.entries()].filter(([c]) => !fixed.has(c)).reduce((a, [, v]) => a + v, 0)
     : catBudgets.filter((b) => !fixed.has(b.name)).reduce((a, b) => a + b.spent, 0);
-  const spentToday = txns.filter((t) => t.date === today && !fixed.has(t.category) && (limitTotal ? inScope(t.category) : true)).reduce((a, t) => a + t.amount, 0);
   const insights = useMemo(
     () => buildInsights({ txns, giftCards, dues, monthTotal: stats.month, lastToDate: stats.lastToDate, top: stats.top, fmt, go: { cards: () => nav.go('cards'), gifts: () => nav.go('gifts'), spends: () => nav.go('spends') } }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +119,7 @@ export function Home() {
       </div>
 
       <div className="stack-lg">
-        <SafeToSpend limit={varLimit} spent={varSpent} spentToday={spentToday} hasBudget={limitTotal > 0} fixed={fixedReserved > 0 ? { reserved: fixedReserved, paid: fixedPaid } : undefined} fmt={fmt} onBudget={() => setBudgets(true)} />
+        <MonthCal txns={txns} isFixed={(c) => fixed.has(c)} inScope={(c) => (limitTotal ? inScope(c) : true)} limit={varLimit} spent={varSpent} hasBudget={limitTotal > 0} fixed={fixedReserved > 0 ? { reserved: fixedReserved, paid: fixedPaid } : undefined} fmt={fmt} onBudget={() => setBudgets(true)} />
         <Insights items={insights} />
 
         {vault === 'none' && (data.cards.length > 0 || data.giftCards.length > 0) && (
