@@ -14,7 +14,7 @@ export const LOGO_FILES: Record<string, string> = {
   "hsbc": "hsbc.svg",
   "icici": "icici.svg",
   "idfcfirst": "idfcfirst.svg",
-  "indusind": "indusind.svg",
+  "indusind": "indusind.png",
   "makemytrip": "makemytrip.svg",
   "mastercard": "mastercard.svg",
   "myntra": "myntra.png",

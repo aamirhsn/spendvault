@@ -15,7 +15,6 @@ Logos are trademarks of their respective owners and are used only to identify ca
 | `hsbc.svg` | [File:HSBC logo (2018).svg](https://commons.wikimedia.org/wiki/File%3AHSBC_logo_%282018%29.svg) | Public domain |
 | `icici.svg` | [File:ICICI Bank Logo.svg](https://commons.wikimedia.org/wiki/File%3AICICI_Bank_Logo.svg) | Public domain |
 | `idfcfirst.svg` | [File:Logo of IDFC First Bank.svg](https://commons.wikimedia.org/wiki/File%3ALogo_of_IDFC_First_Bank.svg) | Public domain |
-| `indusind.svg` | [File:IndusInd Bank SVG Logo.svg](https://commons.wikimedia.org/wiki/File%3AIndusInd_Bank_SVG_Logo.svg) | Public domain |
 | `makemytrip.svg` | [File:Makemytrip logo.svg](https://commons.wikimedia.org/wiki/File%3AMakemytrip_logo.svg) | Public domain |
 | `mastercard.svg` | [File:Mastercard 2019 logo.svg](https://commons.wikimedia.org/wiki/File%3AMastercard_2019_logo.svg) | Public domain |
 | `myntra.png` | [File:Myntra Logo.png](https://commons.wikimedia.org/wiki/File%3AMyntra_Logo.png) | Public domain |
@@ -34,4 +33,4 @@ Additional brand marks come from [Simple Icons](https://simpleicons.org) (CC0).
 
 ## Supplied by the app owner
 
-au.png (AU Small Finance Bank), kotak.png (Kotak Mahindra Bank), slice.png (slice), bobcard.png (BOBCARD) were provided by the app's owner for personal use. Trademarks belong to their respective owners.
+au.png (AU Small Finance Bank), kotak.png (Kotak Mahindra Bank), slice.png (slice), bobcard.png (BOBCARD), indusind.png (IndusInd Bank) were provided by the app's owner for personal use. Trademarks belong to their respective owners.
