@@ -15,7 +15,6 @@ const levelOf = (r: number) => (r <= 0 ? 0 : r <= 0.5 ? 1 : r <= 1 ? 2 : r <= 1.
 export function MonthCal(p: {
   txns: Transaction[];
   isFixed: (category: string) => boolean;
-  inScope: (category: string) => boolean;
   limit: number; // everyday budget for the month (0 = none)
   spent: number; // everyday spent this month
   hasBudget: boolean;
@@ -44,7 +43,6 @@ export function MonthCal(p: {
         if (t.date.startsWith(monthKey)) fixedDays.set(t.date, (fixedDays.get(t.date) ?? 0) + t.amount);
         continue;
       }
-      if (!p.inScope(t.category)) continue;
       if (t.date.startsWith(monthKey)) {
         daily.set(t.date, (daily.get(t.date) ?? 0) + t.amount);
         counts.set(t.date, (counts.get(t.date) ?? 0) + 1);

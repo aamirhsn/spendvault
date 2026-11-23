@@ -82,7 +82,6 @@ export function Home() {
     .sort((a, b) => b.spent / b.limit - a.spent / a.limit);
   const limitTotal = budget || catBudgets.reduce((a, b) => a + b.limit, 0);
 
-  const inScope = (cat: string) => !!budget || catBudgets.some((b) => b.name === cat);
   // Safe to spend works on everyday spending only: fixed lump sums (rent, EMIs…) are set aside first.
   const fixed = fixedCats(settings);
   const catBudget = settings.categoryBudgets ?? {};
@@ -91,9 +90,8 @@ export function Home() {
   const fixedPaid = fixedScope.reduce((a, c) => a + spentIn(c), 0);
   const fixedReserved = fixedScope.reduce((a, c) => a + Math.max(catBudget[c] ?? 0, spentIn(c)), 0);
   const varLimit = budget ? Math.max(0, budget - fixedReserved) : catBudgets.filter((b) => !fixed.has(b.name)).reduce((a, b) => a + b.limit, 0);
-  const varSpent = budget
-    ? [...stats.byCat.entries()].filter(([c]) => !fixed.has(c)).reduce((a, [, v]) => a + v, 0)
-    : catBudgets.filter((b) => !fixed.has(b.name)).reduce((a, b) => a + b.spent, 0);
+  // Everyday spending = everything that isn't a fixed cost, budgeted category or not.
+  const varSpent = [...stats.byCat.entries()].filter(([c]) => !fixed.has(c)).reduce((a, [, v]) => a + v, 0);
   const insights = useMemo(
     () => buildInsights({ txns, giftCards, dues, monthTotal: stats.month, lastToDate: stats.lastToDate, top: stats.top, fmt, go: { cards: () => nav.go('cards'), gifts: () => nav.go('gifts'), spends: () => nav.go('spends') } }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +117,7 @@ export function Home() {
       </div>
 
       <div className="stack-lg">
-        <MonthCal txns={txns} isFixed={(c) => fixed.has(c)} inScope={(c) => (limitTotal ? inScope(c) : true)} limit={varLimit} spent={varSpent} hasBudget={limitTotal > 0} fixed={fixedReserved > 0 ? { reserved: fixedReserved, paid: fixedPaid } : undefined} fmt={fmt} onBudget={() => setBudgets(true)} />
+        <MonthCal txns={txns} isFixed={(c) => fixed.has(c)} limit={varLimit} spent={varSpent} hasBudget={limitTotal > 0} fixed={fixedReserved > 0 ? { reserved: fixedReserved, paid: fixedPaid } : undefined} fmt={fmt} onBudget={() => setBudgets(true)} />
         <Insights items={insights} />
 
         {vault === 'none' && (data.cards.length > 0 || data.giftCards.length > 0) && (
