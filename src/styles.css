@@ -715,16 +715,29 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .bud-prog .bar > div { border-radius: 9px; height: 100%; }
 .bud-prog span { font: 700 13px var(--display); color: var(--label-2); min-width: 34px; text-align: right; }
 
-/* ================= Card map (spend by card treemap) ================= */
-.cmap { padding: 14px; }
-.cmap-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 2px 10px; }
-.cmap-head b { font: 800 19px var(--display); letter-spacing: -0.02em; white-space: nowrap; }
-.cmap-area { position: relative; }
-.cmap-tile { position: absolute; border: 0; border-radius: 11px; padding: 8px 9px; overflow: hidden; text-align: left; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.14), inset 0 1px 0 rgba(255,255,255,.12); transition: transform .2s var(--spring, ease); }
-.cmap-tile:active { transform: scale(.97); }
-.cmap-name { font: 700 11.5px var(--display); letter-spacing: .02em; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.cmap-amt { font: 800 16px var(--display); letter-spacing: -0.02em; white-space: nowrap; }
-.cmap-amt.sm { font-size: 13px; }
-.cmap-pct { position: absolute; top: 7px; right: 7px; font: 800 11px var(--display); padding: 3px 7px; border-radius: 99px; background: rgba(255,255,255,.2); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.cmap-pct.sm { position: static; align-self: flex-start; margin-bottom: auto; padding: 2px 6px; font-size: 10px; }
-.cmap-only { margin: auto; font: 800 11px var(--display); }
+/* ================= Card × day utilisation matrix ================= */
+.umx { padding: 14px 14px 12px; }
+.umx-grid { display: grid; column-gap: 2.5px; row-gap: 3px; align-items: center; }
+.umx-row { display: contents; cursor: pointer; }
+.umx-h { font: 700 9.5px var(--display); color: var(--label-3); white-space: nowrap; height: 14px; display: flex; justify-content: center; overflow: visible; }
+.umx-h.today { color: var(--tint); }
+.umx-h.now { justify-content: flex-end; }
+.umx-name { overflow: hidden; display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: var(--label); padding-right: 6px; }
+.umx-name i { width: 14px; height: 10px; border-radius: 2.5px; flex: none; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.15); }
+.umx-c { position: relative; aspect-ratio: 1; border-radius: 2px; background: var(--fill); display: grid; place-items: center; }
+.umx-c.fut { background: transparent; box-shadow: inset 0 0 0 1px var(--sep); }
+.umx-c.td { outline: 1.5px solid var(--tint); outline-offset: 1px; }
+:is(.umx-c, .umx-legend i)[data-l='1'] { background: #c3eedb; }
+:is(.umx-c, .umx-legend i)[data-l='2'] { background: #10a36b; }
+:is(.umx-c, .umx-legend i)[data-l='3'] { background: #f5a524; }
+:is(.umx-c, .umx-legend i)[data-l='4'] { background: #ff3b30; }
+:root[data-theme='dark'] :is(.umx-c, .umx-legend i)[data-l='1'] { background: #1d4d38; }
+.umx-flag { position: absolute; inset: 1px; width: calc(100% - 2px); height: calc(100% - 2px); fill: none; stroke: var(--label); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.umx-c[data-l='2'] .umx-flag, .umx-c[data-l='4'] .umx-flag { stroke: #fff; }
+.umx-flag.inline { position: static; width: 9px; height: 11px; margin-right: 4px; vertical-align: -1px; }
+.umx-now { font: 800 12px var(--display); text-align: right; }
+.umx-now[data-l='2'] { color: var(--tint); } .umx-now[data-l='3'] { color: #d98900; } .umx-now[data-l='4'] { color: var(--red); } .umx-now[data-l='0'], .umx-now[data-l='1'] { color: var(--label-2); }
+.umx-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 12px; font-size: 11.5px; color: var(--label-2); }
+.umx-legend span { display: inline-flex; align-items: center; }
+.umx-legend i { width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; display: inline-block; }
+.umx-tip { margin-top: 12px; padding: 10px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.35; background: color-mix(in srgb, #f5a524 14%, transparent); color: var(--label); }

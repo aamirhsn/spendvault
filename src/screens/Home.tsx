@@ -10,7 +10,7 @@ import { Logo, hasLogo } from '../lib/logos';
 import { IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
 import { CBtn, NavRow, bioName } from '../components/ui';
 import { Insights, SafeToSpend, buildInsights } from '../components/Pulse';
-import { CardMap } from '../components/CardMap';
+import { UtilMatrix } from '../components/UtilMatrix';
 import { TodoEditor, TodoFab, TodoSheet, sortTodos } from '../components/Todos';
 import type { Todo } from '../lib/types';
 
@@ -76,18 +76,6 @@ export function Home() {
         .sort((a, b) => (b.c.overdue ?? 0) - (a.c.overdue ?? 0) || a.days - b.days),
     [cards],
   );
-  const byCard = useMemo(() => {
-    const m = new Map<string, { spent: number; count: number }>();
-    for (const t of txns) {
-      if (monthKey(t.date) !== thisMonth || t.payment.type !== 'card' || !t.payment.cardId) continue;
-      const net = t.amount - t.giftCards.reduce((a, g) => a + g.amount, 0);
-      if (net <= 0) continue;
-      const cur = m.get(t.payment.cardId) ?? { spent: 0, count: 0 };
-      m.set(t.payment.cardId, { spent: cur.spent + net, count: cur.count + 1 });
-    }
-    return cards.filter((c) => c.kind === 'credit' && m.has(c.id)).map((c) => ({ c, ...m.get(c.id)! })).sort((a, b) => b.spent - a.spent);
-  }, [txns, cards, thisMonth]);
-  const cardTotal = byCard.reduce((a, x) => a + x.spent, 0);
   const dueTotal = dues.reduce((a, d) => a + d.owed, 0);
   const expiring = giftCards.filter((g) => !g.archived && g.balance > 0 && g.expiry && daysUntil(parseISO(g.expiry)) >= 0 && daysUntil(parseISO(g.expiry)) <= 30);
 
@@ -166,10 +154,10 @@ export function Home() {
           )}
         </section>
 
-        {byCard.length > 0 && (
+        {cards.some((c) => c.kind === 'credit') && (
           <section>
-            <div className="section-label">Spend by card · {monthLabel(thisMonth, true)} <button className="link" onClick={() => nav.go('cards')}>Cards <IChevron width={13} /></button></div>
-            <CardMap items={byCard} total={cardTotal} fmt={fmt} onOpen={() => nav.go('cards')} />
+            <div className="section-label">Card utilisation <button className="link" onClick={() => nav.go('cards')}>Cards <IChevron width={13} /></button></div>
+            <UtilMatrix cards={cards} txns={txns} fmt={fmt} onOpen={() => nav.go('cards')} />
           </section>
         )}
 
