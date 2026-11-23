@@ -57,8 +57,8 @@ export function SafeToSpend(p: {
             <>
               <span className="safe-pill" style={{ color: status.c }}>● {status.t}</span>
               <div className="safe-v">{p.fmt(Math.abs(remaining))} {remaining < 0 ? 'over' : 'left'}</div>
-              <div className="foot muted">of {p.fmt(p.limit)} budget</div>
-              <div className="foot muted" style={{ marginTop: 8 }}>
+              <div className="safe-of">of {p.fmt(p.limit)} budget</div>
+              <div className="safe-days">
                 {daysLeft === 1 ? 'Last day of the month' : `${daysLeft} days to go`}
               </div>
             </>
