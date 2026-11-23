@@ -709,3 +709,8 @@ button.cell:active, a.cell:active { background: var(--fill); }
 
 .safe-of { font-size: 16px; font-weight: 500; color: var(--label-2); margin-top: 3px; letter-spacing: -0.01em; }
 .safe-days { font-size: 15px; font-weight: 500; color: var(--label-2); margin-top: 10px; }
+
+.bud-prog { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
+.bud-prog .bar { flex: 1; height: 7px; border-radius: 9px; }
+.bud-prog .bar > div { border-radius: 9px; height: 100%; }
+.bud-prog span { font: 700 13px var(--display); color: var(--label-2); min-width: 34px; text-align: right; }

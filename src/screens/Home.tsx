@@ -5,7 +5,7 @@ import { addMonths, daysUntil, money, monthKey, monthLabel, nextDayOfMonth, pars
 import { SERIES, SERIES_OTHER } from '../lib/categories';
 import { Bars, Donut, type Point } from '../components/Charts';
 import { useDeleteSpend, TxnRow } from '../components/TxnRow';
-import { BudgetsSheet } from '../components/Budgets';
+import { BudgetsSheet, budgetColor } from '../components/Budgets';
 import { CatIcon } from '../components/CatIcon';
 import { Logo, hasLogo } from '../lib/logos';
 import { IChevron, IFace, IMessage, IPie, ISettings } from '../components/Icons';
@@ -157,11 +157,14 @@ export function Home() {
                     <CatIcon name={b.name} size={40} />
                     <span className="grow">
                       <div className="t ellipsis" style={{ fontWeight: 500 }}>{b.name}</div>
-                      <div className="st">{daysLeft} days left · <span style={{ color: p > 100 ? 'var(--red)' : undefined }}>{p.toFixed(0)}% spent</span></div>
+                      <div className="bud-prog">
+                        <div className="bar"><div style={{ width: `${Math.min(100, Math.max(p, p > 0 ? 3 : 0))}%`, background: budgetColor(p) }} /></div>
+                        <span style={{ color: p > 100 ? 'var(--red)' : undefined }}>{p.toFixed(0)}%</span>
+                      </div>
                     </span>
                     <span className="amt-col">
                       <div className="a" style={{ color: b.limit - b.spent < 0 ? 'var(--red)' : undefined }}>{fmt(Math.abs(b.limit - b.spent))}</div>
-                      <div className="b">{b.limit - b.spent >= 0 ? 'left this month' : 'over'}</div>
+                      <div className="b">{b.limit - b.spent >= 0 ? `left of ${fmt(b.limit)}` : `over ${fmt(b.limit)}`}</div>
                     </span>
                   </div>
                 );
