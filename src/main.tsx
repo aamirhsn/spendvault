@@ -2,14 +2,17 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { StoreProvider } from './lib/store';
+import { CrashGuard } from './components/Crash';
 import '@fontsource-variable/plus-jakarta-sans/wght.css';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <StoreProvider>
-      <App />
-    </StoreProvider>
+    <CrashGuard>
+      <StoreProvider>
+        <App />
+      </StoreProvider>
+    </CrashGuard>
   </StrictMode>,
 );
 
