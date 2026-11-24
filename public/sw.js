@@ -1,6 +1,6 @@
 // Offline cache for the app shell only. User data never touches the cache:
 // it lives encrypted in IndexedDB and the app makes no network requests.
-const CACHE = 'fiscus-v29';
+const CACHE = 'fiscus-v30';
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon.svg'])));
   self.skipWaiting();

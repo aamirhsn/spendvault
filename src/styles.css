@@ -847,3 +847,6 @@ input[type='password']::placeholder { letter-spacing: -0.01em; }
 :root[data-theme='dark'] .vt-exp.hot { color: #ffc35c; background: rgba(255,170,0,.18); } :root[data-theme='dark'] .vt-exp.bad { color: #ff8a80; background: rgba(255,69,58,.2); }
 .rw-pin.l0 .rw-card, .rw-pin.l1 .rw-card { z-index: 3; }
 .rw-pin.l2 .rw-card, .rw-pin.l3 .rw-card { z-index: 1; }
+/* Vector brand marks (Simple Icons) have no intrinsic size; give them one inside small logo slots. */
+.rw-logo svg { width: 16px; height: 16px; }
+.vt-logo svg { width: 26px; height: 26px; }
