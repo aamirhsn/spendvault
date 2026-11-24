@@ -27,7 +27,7 @@ function expiryLabel(g: GiftCard) {
   if (d < 0) return 'Expired';
   if (d <= 30) return `${d}d left`;
   const e = parseISO(g.expiry);
-  return e.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d > 300 ? '2-digit' : undefined });
+  return e.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: e.getFullYear() !== new Date().getFullYear() ? '2-digit' : undefined });
 }
 
 export function GiftPass({ g, currency, hide, big }: { g: GiftCard; currency: string; hide: boolean; big?: boolean }) {
