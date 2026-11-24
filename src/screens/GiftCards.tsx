@@ -26,7 +26,8 @@ function expiryLabel(g: GiftCard) {
   const d = daysUntil(parseISO(g.expiry));
   if (d < 0) return 'Expired';
   if (d <= 30) return `${d}d left`;
-  return parseISO(g.expiry).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+  const e = parseISO(g.expiry);
+  return e.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d > 300 ? '2-digit' : undefined });
 }
 
 export function GiftPass({ g, currency, hide, big }: { g: GiftCard; currency: string; hide: boolean; big?: boolean }) {
@@ -45,6 +46,89 @@ export function GiftPass({ g, currency, hide, big }: { g: GiftCard; currency: st
         <div className="bal num">{money(g.balance, currency, { hide })}</div>
         <div className="pbar"><div style={{ width: `${pct}%` }} /></div>
       </div>
+    </div>
+  );
+}
+
+/** Small logo for pins/stubs: brand art if known, else the brand initial in its colour. */
+function MiniLogo({ brand }: { brand: string }) {
+  const { data } = useStore();
+  return hasLogo(brand, data.logos) ? <Logo name={brand} /> : <b className="mini-l" style={{ color: giftBrand(brand).color }}>{brand.slice(0, 1).toUpperCase()}</b>;
+}
+
+/** Tear-off voucher: brand stub, perforation, balance. */
+export function VoucherTicket({ g, fmt, onClick }: { g: GiftCard; fmt: (n: number) => string; onClick(): void }) {
+  const b = giftBrand(g.brand);
+  const d = g.expiry ? daysUntil(parseISO(g.expiry)) : null;
+  const expired = d != null && d < 0;
+  const exp = expiryLabel(g);
+  const pct = g.value > 0 ? Math.min(100, (g.balance / g.value) * 100) : 0;
+  return (
+    <button className={`vt${g.balance <= 0 || g.archived || expired ? ' dim' : ''}`} onClick={onClick} aria-label={`${giftName(g)}, ${fmt(g.balance)} left`}>
+      <span className="vt-stub" style={{ background: giftBackground(b.color) }}>
+        <span className="vt-logo"><MiniLogo brand={g.brand} /></span>
+      </span>
+      <span className="vt-body">
+        <span className="vt-name">{g.brand}{(g.codeTail || g.code) && <em> ••{g.codeTail || g.code.replace(/[\s-]/g, '').slice(-4)}</em>}</span>
+        <span className="vt-amt">{fmt(g.balance)}{g.value > 0 && g.value !== g.balance && <small> of {fmt(g.value)}</small>}</span>
+        {g.value > 0 && <span className="vt-bar"><i style={{ width: `${pct}%`, background: b.color }} /></span>}
+        {exp && <span className={`vt-exp${expired ? ' bad' : d != null && d <= 30 ? ' hot' : ''}`}>{exp}</span>}
+      </span>
+    </button>
+  );
+}
+
+const RUNWAY_DAYS = 183;
+/** Timeline of the next ~6 months with each active card pinned to its expiry date. */
+export function ExpiryRunway({ cards, fmt, onOpen }: { cards: GiftCard[]; fmt: (n: number) => string; onOpen(id: string): void }) {
+  const items = cards
+    .map((g) => ({ g, d: daysUntil(parseISO(g.expiry)) }))
+    .filter((x) => x.d >= 0 && x.d <= RUNWAY_DAYS)
+    .sort((a, b) => a.d - b.d);
+  if (!items.length) return null;
+  // Lanes: 0 = just above the rail, 1 = just below, 2 = higher, 3 = lower. Greedy so pins don't overlap.
+  const W = 24; // pin width as % of the track
+  const lastX = [-99, -99, -99, -99];
+  const pins = items.map((x) => {
+    const pos = 3 + (x.d / RUNWAY_DAYS) * 94;
+    let lane = lastX.findIndex((l) => pos - l >= W);
+    if (lane < 0) lane = lastX.indexOf(Math.min(...lastX));
+    lastX[lane] = pos;
+    return { ...x, pos, lane };
+  });
+  const up = pins.some((p) => p.lane === 2) ? 2 : pins.some((p) => p.lane === 0) ? 1 : 0;
+  const down = pins.some((p) => p.lane === 3) ? 2 : pins.some((p) => p.lane === 1) ? 1 : 0;
+  const railTop = 8 + up * 54;
+  const height = railTop + 28 + down * 54;
+  const now = new Date();
+  const months = [1, 2, 3, 4, 5, 6].map((m) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + m, 1);
+    return { label: d.toLocaleDateString(undefined, { month: 'short' }), pos: 3 + (Math.round((d.getTime() - now.getTime()) / 86_400_000) / RUNWAY_DAYS) * 94 };
+  }).filter((m) => m.pos > 12 && m.pos < 97);
+  const first = items[0];
+  return (
+    <div className="rw">
+      <div className="label-xs">Expiring in the next 6 months</div>
+      <div className="rw-track" style={{ height, ['--rail' as string]: `${railTop}px` }}>
+        <div className="rw-rail" />
+        <span className="rw-m" style={{ left: '3%' }}>Now</span>
+        {months.map((m) => <span key={m.label} className="rw-m" style={{ left: `${m.pos}%` }}>{m.label}</span>)}
+        {pins.map(({ g, d, pos, lane }) => {
+          const c = giftBrand(g.brand).color;
+          return (
+            <button key={g.id} className={`rw-pin l${lane}${d <= 30 ? ' hot' : ''}`} style={{ left: `${pos}%`, ['--c' as string]: c }} onClick={() => onOpen(g.id)} aria-label={`${giftName(g)} expires in ${d} days`}>
+              <span className="rw-card">
+                <span className="rw-logo"><MiniLogo brand={g.brand} /></span>
+                <b>{fmt(g.balance)}</b>
+              </span>
+              <i className="rw-dot" />
+            </button>
+          );
+        })}
+      </div>
+      <button className={`rw-first${first.d <= 30 ? ' hot' : ''}`} onClick={() => onOpen(first.g.id)}>
+        <b>Use {first.g.brand} first</b> · {fmt(first.g.balance)} expires {first.d === 0 ? 'today' : first.d === 1 ? 'tomorrow' : `in ${first.d} days`}
+      </button>
     </div>
   );
 }
@@ -84,13 +168,14 @@ export function GiftCards() {
       </header>
 
       <div className="stack-lg">
-        <div className="card hero">
+        <div className="card hero gift-hero">
           <div className="row between">
             <span className="k">Available balance</span>
             {expiring > 0 && <span className="pill warn">{expiring} expiring soon</span>}
           </div>
           <div className="big num">{fmt(total)}</div>
           <div className="foot muted">across {active.length} active card{active.length === 1 ? '' : 's'}</div>
+          <ExpiryRunway cards={active.filter((g) => g.expiry)} fmt={fmt} onOpen={setDetail} />
         </div>
 
         <Segmented full value={filter} onChange={setFilter} options={[{ value: 'active', label: 'Active' }, { value: 'used', label: 'Used up' }, { value: 'archived', label: 'Archived' }]} />
@@ -98,12 +183,8 @@ export function GiftCards() {
         {list.length === 0 ? (
           <Empty icon="🎁" title={filter === 'active' ? 'No gift cards' : 'Nothing here'} text="Keep Amazon, Flipkart, Myntra and other gift cards here and use them while logging spends." action={filter === 'active' ? <button className="btn primary" onClick={() => setForm({ open: true })}>Add gift card</button> : undefined} />
         ) : (
-          <div className="gift-grid">
-            {list.map((g) => (
-              <button key={g.id} onClick={() => setDetail(g.id)} aria-label={`${g.brand} gift card`} style={{ display: 'block' }}>
-                <GiftPass g={g} currency={settings.currency} hide={settings.hideAmounts} />
-              </button>
-            ))}
+          <div className="vt-list">
+            {list.map((g) => <VoucherTicket key={g.id} g={g} fmt={fmt} onClick={() => setDetail(g.id)} />)}
           </div>
         )}
       </div>
