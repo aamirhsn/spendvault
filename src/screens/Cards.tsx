@@ -48,6 +48,49 @@ function NetworkMark({ network, light }: { network: string; light: boolean }) {
   return <Logo name={network} tone={light ? 'dark' : 'white'} style={style} />;
 }
 
+/** Bank logo on the card face, sized by its shape so every logo carries similar visual weight:
+ *  square marks get taller, long wordmarks get shorter (constant area, clamped). */
+function BankMark({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ratio, setRatio] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const img = el.querySelector('img');
+      if (img) {
+        if (img.naturalWidth && img.naturalHeight) setRatio(img.naturalWidth / img.naturalHeight);
+        return;
+      }
+      const svg = el.querySelector('svg');
+      if (!svg) return;
+      // Built-in marks sit inside a padded 24×24 box: crop the viewBox to the drawn shape.
+      try {
+        const bb = svg.getBBox();
+        if (bb.width && bb.height) {
+          svg.setAttribute('viewBox', `${bb.x} ${bb.y} ${bb.width} ${bb.height}`);
+          setRatio(bb.width / bb.height);
+          return;
+        }
+      } catch { /* not rendered yet */ }
+      const vb = svg.viewBox?.baseVal;
+      if (vb && vb.width && vb.height) setRatio(vb.width / vb.height);
+    };
+    measure();
+    const img = el.querySelector('img');
+    img?.addEventListener('load', measure);
+    return () => img?.removeEventListener('load', measure);
+  }, [children]);
+  // Square mark ≈ 8cqi tall; 4:1 logo ≈ 6.2cqi; 9:1 wordmark ≈ 4.6cqi (≈ 41cqi wide).
+  const h = ratio ? Math.max(4.2, Math.min(8, 10 / Math.pow(ratio, 0.35))) : 7;
+  const w = ratio ? Math.min(46, h * ratio) : undefined;
+  return (
+    <div ref={ref} className="pc-bank" style={{ height: `${h}cqi`, width: w ? `${w}cqi` : undefined, maxWidth: '58%' }}>
+      {children}
+    </div>
+  );
+}
+
 /** Wallet-style card face. `reveal` shows the full number. */
 export function CardVisual({ c, reveal }: { c: PaymentCard; reveal?: boolean }) {
   const { data } = useStore();
@@ -73,7 +116,7 @@ export function CardVisual({ c, reveal }: { c: PaymentCard; reveal?: boolean }) 
         <div className="face">
           {!c.art && (
             <div className="pc-top">
-              <div className="pc-bank">{bankLogo ?? <span className="wordmark">{c.bank || 'Bank'}</span>}</div>
+              {bankLogo ? <BankMark key={c.bank}>{bankLogo}</BankMark> : <div className="pc-bank"><span className="wordmark">{c.bank || 'Bank'}</span></div>}
               <div className="pc-product">{c.name}</div>
             </div>
           )}

@@ -850,3 +850,7 @@ input[type='password']::placeholder { letter-spacing: -0.01em; }
 /* Vector brand marks (Simple Icons) have no intrinsic size; give them one inside small logo slots. */
 .rw-logo svg { width: 16px; height: 16px; }
 .vt-logo svg { width: 26px; height: 26px; }
+
+/* Card-face logo slot is sized per logo (see BankMark); the art just fills it. */
+.pc-bank img, .pc-bank svg { height: 100%; width: 100%; max-width: 100%; object-fit: contain; object-position: left center; display: block; }
+.pc-bank svg { aspect-ratio: auto !important; }
