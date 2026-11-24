@@ -787,3 +787,16 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .fixed-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
 .fixed-chips .chip { font-size: 14px; padding: 6px 12px; background: var(--fill); }
 .fixed-chips .chip.on { background: var(--tint); color: #fff; }
+
+/* Password fields: draw the masking dots with the plain system font. iOS Safari picks the mask glyph from
+   the first font in the stack, and our custom ₹-only face made it render as stacked bars. */
+input[type='password'] { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important; font-feature-settings: normal; letter-spacing: 0.12em; -webkit-text-security: disc; }
+input[type='password']::placeholder { letter-spacing: -0.01em; }
+
+/* Utilisation matrix polish: quieter future days, filled due-date cells, due countdown beside the name */
+.umx-c.fut { background: color-mix(in srgb, var(--fill) 55%, transparent); box-shadow: none; }
+.umx-c.fut.due { background: var(--fill); box-shadow: inset 0 0 0 1.5px var(--label); }
+.umx-c.fut.due.soon, .umx-c.due.soon { background: color-mix(in srgb, var(--red) 14%, transparent); box-shadow: inset 0 0 0 1.5px var(--red); }
+.umx-name { gap: 6px; }
+.umx-due { flex: none; font: 800 9.5px var(--display); font-style: normal; padding: 1px 5px; border-radius: 99px; color: var(--label-2); background: var(--fill); }
+.umx-due.soon { color: #fff; background: var(--red); }

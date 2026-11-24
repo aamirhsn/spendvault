@@ -58,7 +58,7 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
       const cells = days.map((d) => {
         const future = d > today;
         const bal = future ? 0 : balanceOn(d);
-        return { iso: todayISO(d), future, u: bal / limit, bal, flag: isDay(d, c.dueDay), stmt: isDay(d, c.statementDay) };
+        return { iso: todayISO(d), future, u: bal / limit, bal, flag: d >= today && isDay(d, c.dueDay), stmt: isDay(d, c.statementDay) };
       });
       const now = cells[BACK];
       // Next statement (for the under-30% tip) and next due date (for the header) within the window.
@@ -121,7 +121,7 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
         </div>
       </div>
 
-      <div className="umx-grid" style={{ gridTemplateColumns: `94px repeat(${DAYS}, minmax(0, 1fr)) 40px` }}>
+      <div className="umx-grid" style={{ gridTemplateColumns: `104px repeat(${DAYS}, minmax(0, 1fr)) 40px` }}>
         <span className="umx-band" style={{ gridColumn: `${BACK + 2} / span 1`, gridRow: `1 / span ${rows.length + 1}` }} aria-hidden />
         <span />
         {days.map((d, i) => (
@@ -129,18 +129,20 @@ export function UtilMatrix({ cards, txns, fmt, onOpen }: { cards: PaymentCard[];
         ))}
         <span className="umx-h now">Now</span>
 
-        {rows.map(({ c, cells, now }) => {
+        {rows.map(({ c, cells, now, nextDue }) => {
           const f = finishFor(cardFinishKey(c));
+          const dueIn = nextDue ? daysTo(nextDue) : null;
           return (
             <div key={c.id} className="umx-row" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === 'Enter' && onOpen()}>
               <span className="umx-name">
                 <i style={{ background: f.bg }} />
                 <span className="ellipsis">{c.name || c.bank}</span>
+                {dueIn != null && dueIn <= 7 && <em className={`umx-due${dueIn <= 3 ? ' soon' : ''}`} title={`Payment due ${fmtDay(nextDue!)}`}>{dueIn === 0 ? 'today' : `${dueIn}d`}</em>}
               </span>
               {cells.map((x, i) => (
                 <span
                   key={x.iso}
-                  className={`umx-c${x.future ? ' fut' : ''}${x.flag ? ' due' : ''}${x.flag && i >= BACK && i - BACK <= 3 ? ' soon' : ''}`}
+                  className={`umx-c${x.future ? ' fut' : ''}${x.flag ? ' due' : ''}${x.flag && i - BACK <= 3 ? ' soon' : ''}`}
                   data-l={x.future ? undefined : level(x.u)}
                   title={`${c.name || c.bank} · ${fmtDay(days[i])}: ${x.future ? 'upcoming' : `${Math.round(x.u * 100)}% (${fmt(x.bal)})`}${x.flag ? ' · payment due' : ''}${x.stmt ? ' · statement' : ''}`}
                 >
